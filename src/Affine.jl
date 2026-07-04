@@ -3,8 +3,8 @@
 The distribution of a deterministic affine transform `Y = scale * X + shift`
 of an inner distribution `X`, with `scale > 0` and any real `shift`.
 
-Computed by the change-of-variables for a strictly increasing affine map: with
-`x = (y - shift) / scale`,
+For a continuous inner distribution, computed by the change-of-variables for a
+strictly increasing affine map: with `x = (y - shift) / scale`,
 
 ```math
 f_Y(y) = f_X\\!\\left(\\frac{y - \\text{shift}}{\\text{scale}}\\right)
@@ -12,14 +12,17 @@ f_Y(y) = f_X\\!\\left(\\frac{y - \\text{shift}}{\\text{scale}}\\right)
 F_Y(y) = F_X\\!\\left(\\frac{y - \\text{shift}}{\\text{scale}}\\right).
 ```
 
-`Affine` is a `UnivariateDistribution`, so it works anywhere a distribution is
-expected.
+For a discrete inner distribution, the probability mass moves to the rescaled
+lattice without the Jacobian term: `P(Y = y) = P(X = (y - shift) / scale)`.
+
+`Affine` is a `UnivariateDistribution` with the value support of the inner
+distribution, so it works anywhere a distribution is expected.
 
 # See also
 - [`affine`](@ref): constructor function
 """
-struct Affine{D <: UnivariateDistribution, T <: Real} <:
-       UnivariateDistribution{Continuous}
+struct Affine{D <: UnivariateDistribution, T <: Real, S <: ValueSupport} <:
+       UnivariateDistribution{S}
     "The inner distribution being transformed."
     dist::D
     "The positive multiplicative scale."
@@ -27,11 +30,11 @@ struct Affine{D <: UnivariateDistribution, T <: Real} <:
     "The additive shift."
     shift::T
 
-    function Affine{D, T}(dist::D, scale::T, shift::T) where {
+    function Affine(dist::D, scale::T, shift::T) where {
             D <: UnivariateDistribution, T <: Real}
         scale > zero(scale) ||
             throw(ArgumentError("scale must be positive"))
-        new{D, T}(dist, scale, shift)
+        new{D, T, Distributions.value_support(D)}(dist, scale, shift)
     end
 end
 
@@ -59,7 +62,7 @@ logpdf(d, 5.0)
 "
 function affine(dist::UnivariateDistribution; scale::Real = 1, shift::Real = 0)
     s, h = promote(float(scale), float(shift))
-    return Affine{typeof(dist), typeof(s)}(dist, s, h)
+    return Affine(dist, s, h)
 end
 
 # Map an observed `y` back to the inner variate `x = (y - shift) / scale`.
@@ -92,11 +95,19 @@ pdf(d::Affine, y::Real) = exp(logpdf(d, y))
 
 @doc "
 
-Compute the log probability density function via change of variables.
+Compute the log probability density function via change of variables. For a
+continuous inner distribution this includes the log-Jacobian `-log(scale)`; for
+a discrete inner distribution the mass transforms without it.
 
 See also: [`pdf`](@ref), [`cdf`](@ref)
 "
 logpdf(d::Affine, y::Real) = logpdf(d.dist, _affine_inv(d, y)) - log(d.scale)
+
+# Discrete pmf: P(Y = y) = P(X = (y - shift) / scale), no Jacobian. Off-lattice
+# points map to non-support inner values, which the inner logpdf sends to -Inf.
+function logpdf(d::Affine{<:UnivariateDistribution, <:Real, Discrete}, y::Real)
+    return logpdf(d.dist, _affine_inv(d, y))
+end
 
 @doc "
 
@@ -173,5 +184,10 @@ Distributions.mode(d::Affine) = d.scale * Distributions.mode(d.dist) + d.shift
 # Skewness and (excess) kurtosis are invariant under a positive affine map.
 Distributions.skewness(d::Affine) = Distributions.skewness(d.dist)
 Distributions.kurtosis(d::Affine) = Distributions.kurtosis(d.dist)
-# Differential entropy picks up the log-Jacobian of the map.
+# Differential entropy picks up the log-Jacobian of the map; discrete entropy
+# is invariant under a bijection.
 Distributions.entropy(d::Affine) = Distributions.entropy(d.dist) + log(d.scale)
+function Distributions.entropy(d::Affine{
+        <:UnivariateDistribution, <:Real, Discrete})
+    return Distributions.entropy(d.dist)
+end

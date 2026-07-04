@@ -120,6 +120,54 @@ end
     @test entropy(dn) ≈ entropy(ref)
 end
 
+@testitem "Affine over discrete distributions" begin
+    using Distributions
+
+    inner = Poisson(3.0)
+    d = affine(inner; scale = 2.0, shift = 1.0)
+    @test d isa DiscreteUnivariateDistribution
+
+    # The pmf moves to the lattice shift .+ scale .* k without a Jacobian.
+    for k in 0:10
+        y = 2.0 * k + 1.0
+        @test logpdf(d, y) ≈ logpdf(inner, k)
+        @test pdf(d, y) ≈ pdf(inner, k)
+    end
+
+    # Off-lattice points carry no mass.
+    @test logpdf(d, 2.0) == -Inf
+    @test pdf(d, 2.0) == 0.0
+    @test !insupport(d, 2.0)
+    @test insupport(d, 3.0)
+
+    # cdf / quantile / moments use the same affine identities as the
+    # continuous case.
+    @test cdf(d, 5.0) ≈ cdf(inner, 2)
+    @test ccdf(d, 5.0) ≈ ccdf(inner, 2)
+    @test quantile(d, 0.5) ≈ 2.0 * quantile(inner, 0.5) + 1.0
+    @test mean(d) ≈ 2.0 * mean(inner) + 1.0
+    @test var(d) ≈ 4.0 * var(inner)
+    @test minimum(d) ≈ 1.0
+    @test maximum(d) == Inf
+
+    # Discrete entropy is invariant under a bijection (no log-Jacobian).
+    @test entropy(d) ≈ entropy(inner)
+
+    # Matches Distributions' own affine arithmetic on discrete distributions.
+    ref = 2.0 * inner + 1.0
+    ys = 1.0 .+ 2.0 .* (0:8)
+    @test logpdf.(d, ys) ≈ logpdf.(ref, ys)
+    @test cdf.(d, ys) ≈ cdf.(ref, ys)
+end
+
+@testitem "Affine value support follows the inner distribution" begin
+    using Distributions
+
+    @test affine(Normal(0.0, 1.0); scale = 2.0) isa
+          ContinuousUnivariateDistribution
+    @test affine(Poisson(2.0); scale = 2.0) isa DiscreteUnivariateDistribution
+end
+
 @testitem "Affine eltype and get_dist" begin
     using Distributions
 

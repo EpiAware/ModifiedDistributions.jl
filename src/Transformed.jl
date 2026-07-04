@@ -151,6 +151,11 @@ end
 
 Distributions.insupport(d::Transformed, x::Real) = insupport(d.dist, x)
 
+# The forward op doesn't change the sample type. Without this, batch sampling
+# `rand(rng, d, n)` allocates a Vector{Any} (the Sampleable fallback) and
+# errors inside Distributions' `_rand!`.
+Base.eltype(::Type{<:Transformed{D}}) where {D} = eltype(D)
+
 Base.rand(rng::AbstractRNG, d::Transformed) = rand(rng, d.dist)
 
 # The forward op never touches sampling, so batch sampling can use the inner

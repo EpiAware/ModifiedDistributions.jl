@@ -64,6 +64,11 @@ end
     @test rand(MersenneTwister(7), sampler(d), 5) ==
           rand(MersenneTwister(7), sampler(inner), 5)
     @test rand(MersenneTwister(7), d, 5) == rand(MersenneTwister(7), inner, 5)
+
+    # eltype follows the inner distribution, so batch sampling allocates a
+    # concretely typed array (regression: Vector{Any} broke rand(rng, d, n)).
+    @test eltype(typeof(d)) == eltype(typeof(inner))
+    @test rand(MersenneTwister(7), d, 5) isa Vector{Float64}
 end
 
 @testitem "forward transforms surface op params and get_dist" begin
