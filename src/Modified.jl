@@ -22,11 +22,11 @@ h^{*}(t) = g^{-1}\\!\\big(g(h(t)) + \\text{effect}\\big),
 ```
 
 so `log` gives proportional hazards and `identity` gives additive hazards. A
-`HazardLink` pairs the link `g` with its inverse `g⁻¹`; the three named links
-([`LogLink`](@ref), [`IdentityLink`](@ref), [`LogitLink`](@ref)) are built-in,
-and any invertible callable can be wrapped with [`hazard_link`](@ref). Only
-the log and identity links have analytic forms; [`modify`](@ref) rejects the
-others until numeric integration is supported.
+`HazardLink` pairs the link `g` with its inverse `invlink` (`g⁻¹`); the three
+named links ([`LogLink`](@ref), [`IdentityLink`](@ref), [`LogitLink`](@ref))
+are built-in, and any invertible callable can be wrapped with
+[`hazard_link`](@ref). Only the log and identity links have analytic forms;
+[`modify`](@ref) rejects the others until numeric integration is supported.
 
 # See also
 - [`modify`](@ref): the verb that builds a [`Modified`](@ref) distribution.
@@ -91,6 +91,14 @@ The logit link: `g = logit`, `g⁻¹ = logistic`.
 `LogitLink` pairs the logit with its logistic inverse. On a continuous base it
 requires numeric cumulative-hazard integration, which this package does not
 yet provide, so [`modify`](@ref) rejects it with an `ArgumentError`.
+
+# Examples
+```@example
+using ModifiedDistributions
+
+# The logit link pair; modify rejects it until numeric integration lands.
+ModifiedDistributions.LogitLink
+```
 
 # See also
 - [`modify`](@ref): the verb that consumes a link.
