@@ -405,6 +405,13 @@ end
 
 # Other distribution interface methods (delegate to underlying distribution).
 
+# Summary statistics describe the underlying distribution: the weight only
+# affects `logpdf`, so these delegate directly. `mean`/`var` are imported at
+# the top of the module; the rest are extended by qualified name.
+for f in (:mean, :var, :std, :mode, :median, :skewness, :kurtosis, :entropy)
+    @eval Distributions.$f(d::Weighted) = Distributions.$f(get_dist(d))
+end
+
 @doc "
 
 Compute the cumulative distribution function (delegates to underlying
