@@ -116,6 +116,43 @@ end
     end
 end
 
+@testitem "Modified identity link accrues hazard from support minimum" begin
+    using Distributions
+
+    # A base whose support starts above zero: the additive hazard accrues
+    # from the support minimum m, logccdf*(x) = logccdf(x) - beta * (x - m),
+    # so survival is continuous at m and the density integrates to one.
+    base = Uniform(1.0, 3.0)
+    beta = 0.4
+    d = modify(base, beta; link = identity)
+    @test ccdf(d, 1.0 + 1e-10)≈1.0 atol=1e-8
+    @test logccdf(d, 2.0) ≈ logccdf(base, 2.0) - beta * (2.0 - 1.0)
+    @test cdf(d, 3.0) ≈ 1.0
+    xs = range(1.0, 3.0; length = 21)
+    @test issorted(cdf.(d, xs))
+    for p in (0.05, 0.25, 0.5, 0.75, 0.95)
+        @test cdf(d, quantile(d, p))≈p atol=1e-8
+    end
+
+    # The density integrates to one over the support.
+    ts = range(1.0, 3.0; length = 200_000)
+    h = step(ts)
+    integral = sum(pdf(d, t) for t in ts) * h
+    @test isapprox(integral, 1.0; atol = 1e-3)
+
+    # Bases without a finite lower support bound are rejected.
+    @test_throws ArgumentError modify(
+        Normal(0.0, 1.0), 0.5; link = identity)
+
+    # Regression: for a base with minimum zero the accrual reduces to
+    # beta * x, anchoring the m = 0 specialisation.
+    e = Exponential(2.0)
+    de = modify(e, 0.3; link = identity)
+    for x in (0.5, 1.0, 2.0)
+        @test logccdf(de, x) ≈ logccdf(e, x) - 0.3 * x
+    end
+end
+
 @testitem "Modified quantile and cdf round trip" begin
     using Distributions
 
