@@ -62,6 +62,16 @@ end
 
 @doc "
 
+Extract the underlying distribution from a hazard-modified distribution.
+
+Returns the base distribution before the hazard modification was applied.
+"
+function get_dist(d::Modified)
+    return d.dist
+end
+
+@doc "
+
 Recursively extract the underlying distribution from nested wrapper types.
 
 This function keeps applying `get_dist` until it reaches a distribution that

@@ -76,7 +76,9 @@ end
                   (theta - 1) * logccdf(base, x)
             @test pdf(d, x) ≈ exp(logpdf(d, x))
             @test cdf(d, x) + ccdf(d, x) ≈ 1.0
-            @test logcdf(d, x) ≈ log(cdf(d, x))
+            # atol guards the deep upper tail where logcdf is ~ -1e-12 and
+            # the two routes differ only in floating-point cancellation.
+            @test logcdf(d, x)≈log(cdf(d, x)) atol=1e-10
         end
     end
 end
