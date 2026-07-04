@@ -76,6 +76,98 @@ end
     @test params(d) == (params(inner)..., 3.0, 2.0)
 end
 
+@testitem "Affine ccdf and logccdf via change of variables" begin
+    using Distributions
+
+    inner = Gamma(2.0, 1.5)
+    d = affine(inner; scale = 3.0, shift = 2.0)
+    for y in [3.0, 5.0, 9.0, 20.0]
+        x = (y - 2.0) / 3.0
+        @test ccdf(d, y) ≈ ccdf(inner, x)
+        @test logccdf(d, y) ≈ logccdf(inner, x)
+    end
+
+    # Direct delegation keeps precision in the far upper tail, where the
+    # generic 1 - cdf fallback underflows to zero on the log scale.
+    dn = affine(Normal(0.0, 1.0); scale = 2.0, shift = 1.0)
+    y_far = 1.0 + 2.0 * 40.0  # 40 inner standard deviations out
+    @test isfinite(logccdf(dn, y_far))
+    @test logccdf(dn, y_far) ≈ logccdf(Normal(0.0, 1.0), 40.0)
+end
+
+@testitem "Affine summary statistics via affine identities" begin
+    using Distributions, Statistics
+
+    inner = Gamma(2.0, 1.5)
+    d = affine(inner; scale = 3.0, shift = 2.0)
+
+    @test std(d) ≈ 3.0 * std(inner)
+    @test median(d) ≈ 3.0 * median(inner) + 2.0
+    @test mode(d) ≈ 3.0 * mode(inner) + 2.0
+    @test skewness(d) == skewness(inner)
+    @test kurtosis(d) == kurtosis(inner)
+    @test entropy(d) ≈ entropy(inner) + log(3.0)
+
+    # Cross-check against a Distributions affine special: a scaled and
+    # shifted standard Normal is a relocated, rescaled Normal.
+    dn = affine(Normal(0.0, 1.0); scale = 2.5, shift = 1.0)
+    ref = Normal(1.0, 2.5)
+    @test std(dn) ≈ std(ref)
+    @test median(dn) ≈ median(ref)
+    @test mode(dn) ≈ mode(ref)
+    @test skewness(dn) == skewness(ref)
+    @test kurtosis(dn) == kurtosis(ref)
+    @test entropy(dn) ≈ entropy(ref)
+end
+
+@testitem "Affine over discrete distributions" begin
+    using Distributions
+
+    inner = Poisson(3.0)
+    d = affine(inner; scale = 2.0, shift = 1.0)
+    @test d isa DiscreteUnivariateDistribution
+
+    # The pmf moves to the lattice shift .+ scale .* k without a Jacobian.
+    for k in 0:10
+        y = 2.0 * k + 1.0
+        @test logpdf(d, y) ≈ logpdf(inner, k)
+        @test pdf(d, y) ≈ pdf(inner, k)
+    end
+
+    # Off-lattice points carry no mass.
+    @test logpdf(d, 2.0) == -Inf
+    @test pdf(d, 2.0) == 0.0
+    @test !insupport(d, 2.0)
+    @test insupport(d, 3.0)
+
+    # cdf / quantile / moments use the same affine identities as the
+    # continuous case.
+    @test cdf(d, 5.0) ≈ cdf(inner, 2)
+    @test ccdf(d, 5.0) ≈ ccdf(inner, 2)
+    @test quantile(d, 0.5) ≈ 2.0 * quantile(inner, 0.5) + 1.0
+    @test mean(d) ≈ 2.0 * mean(inner) + 1.0
+    @test var(d) ≈ 4.0 * var(inner)
+    @test minimum(d) ≈ 1.0
+    @test maximum(d) == Inf
+
+    # Discrete entropy is invariant under a bijection (no log-Jacobian).
+    @test entropy(d) ≈ entropy(inner)
+
+    # Matches Distributions' own affine arithmetic on discrete distributions.
+    ref = 2.0 * inner + 1.0
+    ys = 1.0 .+ 2.0 .* (0:8)
+    @test logpdf.(d, ys) ≈ logpdf.(ref, ys)
+    @test cdf.(d, ys) ≈ cdf.(ref, ys)
+end
+
+@testitem "Affine value support follows the inner distribution" begin
+    using Distributions
+
+    @test affine(Normal(0.0, 1.0); scale = 2.0) isa
+          ContinuousUnivariateDistribution
+    @test affine(Poisson(2.0); scale = 2.0) isa DiscreteUnivariateDistribution
+end
+
 @testitem "Affine eltype and get_dist" begin
     using Distributions
 
