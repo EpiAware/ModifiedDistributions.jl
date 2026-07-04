@@ -6,6 +6,10 @@ Distributions.jl: an affine transform ([`affine`](@ref)), a likelihood weight
 ([`weight`](@ref)), and forward-series transforms ([`thin`](@ref) /
 [`cumulative`](@ref)). Also owns the generic [`get_dist`](@ref) unwrap protocol.
 
+When ComposedDistributions.jl is loaded, a package extension additionally lets
+the modifier verbs apply across a composed `Sequential` chain by modifying the
+univariate scalar the chain observes (its convolved total).
+
 # Examples
 ```@example
 using ModifiedDistributions, Distributions
