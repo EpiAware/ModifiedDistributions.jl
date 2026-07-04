@@ -98,7 +98,8 @@ function scenarios(; with_reference::Bool = false, category::Symbol = :marginal)
     # cleanly.
     obs_mod = [0.8, 1.6, 2.4, 4.0]
     _push!("Modified LogNormal log-link logpdf",
-        (θ, obs) -> sum(
+        (θ,
+            obs) -> sum(
             x -> logpdf(modify(LogNormal(θ[1], θ[2]), θ[3]), x),
             obs),
         [1.0, 0.5, 0.4], (Constant(obs_mod),))
