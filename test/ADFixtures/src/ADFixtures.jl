@@ -62,7 +62,8 @@ function scenarios(; with_reference::Bool = false, category::Symbol = :marginal)
     # `Type`s so Enzyme forward differentiates cleanly.
     obs_aff = [2.0, 3.5, 5.0, 7.0]
     _push!("Affine LogNormal scale+shift logpdf",
-        (θ, obs) -> sum(
+        (θ,
+            obs) -> sum(
             x -> logpdf(
                 affine(LogNormal(θ[1], θ[2]); scale = θ[3], shift = θ[4]), x),
             obs),
@@ -74,7 +75,9 @@ function scenarios(; with_reference::Bool = false, category::Symbol = :marginal)
     obs = [0.5, 1.2, 2.5, 3.8, 5.1]
     counts = [3.0, 1.0, 4.0, 2.0, 5.0]
     _push!("Weighted LogNormal scalar logpdf",
-        (θ, obs, cts) -> sum(
+        (θ,
+            obs,
+            cts) -> sum(
             i -> logpdf(weight(LogNormal(θ[1], θ[2]), cts[i]), obs[i]),
             eachindex(obs)),
         [1.0, 0.75], (Constant(obs), Constant(counts)))
