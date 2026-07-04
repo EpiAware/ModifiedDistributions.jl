@@ -7,9 +7,10 @@
         :ModifiedDistributionsComposedDistributionsExt) !== nothing
 
     # A composed chain observes one scalar (the convolved total of its steps);
-    # a modifier applied to the chain modifies that observed quantity.
-    seq = compose((onset_admit = Gamma(2.0, 1.0),
-        admit_death = LogNormal(0.5, 0.4)))
+    # a modifier applied to the chain modifies that observed quantity. (A flat
+    # NamedTuple lowers to Parallel, so build the chain with `sequential`.)
+    seq = sequential(:onset_admit => Gamma(2.0, 1.0),
+        :admit_death => LogNormal(0.5, 0.4))
     obs = observed_distribution(seq)
     x = 3.0
 
@@ -40,8 +41,8 @@ end
     using Distributions
     using ComposedDistributions
 
-    seq = compose((onset_admit = Gamma(2.0, 1.0),
-        admit_death = LogNormal(0.5, 0.4)))
+    seq = sequential(:onset_admit => Gamma(2.0, 1.0),
+        :admit_death => LogNormal(0.5, 0.4))
     obs = observed_distribution(seq)
     x = 3.0
 
