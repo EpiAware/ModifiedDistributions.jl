@@ -10,6 +10,15 @@ function _log1mexp(x::Real)
     return x > -oftype(float(x), log(2)) ? log(-expm1(x)) : log1p(-exp(x))
 end
 
+# log(exp(a) + exp(b)), numerically stable, tolerating -Inf inputs. Local
+# equivalent of LogExpFunctions.logaddexp, kept here for the same reason.
+function _logaddexp(a::Real, b::Real)
+    isinf(a) && a < 0 && return b
+    isinf(b) && b < 0 && return a
+    m = max(a, b)
+    return m + log1p(exp(-abs(a - b)))
+end
+
 @doc """
 
 A link for the hazard modification carried by a [`Modified`](@ref)
@@ -65,9 +74,10 @@ const LogLink = HazardLink(log, exp)
 
 The identity link (additive hazards): `g = g⁻¹ = identity`.
 
-`IdentityLink` adds to the cumulative hazard,
-``S^{*}(t) = S(t)\\,e^{-\\beta t}``, the additive-hazards form. Only
-non-negative effects are supported (see [`modify`](@ref)).
+`IdentityLink` adds to the cumulative hazard from the support minimum `m`,
+``S^{*}(t) = S(t)\\,e^{-\\beta (t - m)}``, the additive-hazards form. Only
+non-negative effects and bases with a finite lower support bound are
+supported (see [`modify`](@ref)).
 
 # Examples
 ```@example
@@ -177,8 +187,9 @@ eagerly, so a `Modified` composes with everything that consumes a
 Two analytic paths are provided, chosen by dispatch on the link:
 
 - [`LogLink`](@ref): proportional hazards, ``S^{*} = S^{e^{\\beta}}``;
-- [`IdentityLink`](@ref) with a non-negative effect: additive hazards,
-  ``S^{*}(t) = S(t)\\,e^{-\\beta t}``.
+- [`IdentityLink`](@ref) with a non-negative effect and a finite lower
+  support bound `m`: additive hazards,
+  ``S^{*}(t) = S(t)\\,e^{-\\beta (t - m)}``.
 
 Other links (and negative additive effects) need numeric cumulative-hazard
 integration and are rejected at construction (see [`modify`](@ref)).
@@ -208,6 +219,10 @@ struct Modified{D <: UnivariateDistribution, E <: Real, L <: HazardLink} <:
                     "non-negative; a negative additive effect needs " *
                     "hazard clamping and numeric cumulative-hazard " *
                     "integration (see CensoredDistributions#670/#680)"))
+            isfinite(minimum(dist)) ||
+                throw(ArgumentError(
+                    "additive-hazard modification needs a base " *
+                    "distribution with a finite lower support bound"))
         elseif L !== typeof(LogLink)
             throw(ArgumentError(
                 "general hazard links require numeric integration, " *
@@ -232,7 +247,10 @@ Both supported links use closed forms. The identity link requires
 which needs hazard clamping and numeric cumulative-hazard integration (see
 CensoredDistributions#670/#680); that path stays upstream in
 CensoredDistributions, as does the discrete (interval-censored) path. Links
-other than log and identity are rejected for the same reason.
+other than log and identity are rejected for the same reason. The identity
+link also requires a base with a finite lower support bound `m` (the extra
+hazard accrues from `m`, so an unbounded-below base has no valid additive
+form).
 
 # Arguments
 - `d`: the base continuous distribution.
@@ -366,12 +384,18 @@ end
 # Identity link: analytic additive hazards (effect >= 0)
 # ============================================================================
 #
-# With β >= 0 the effect, the additive hazard is h*(t) = h(t) + β, so
-#   H*(t) = H(t) + β t,  S*(t) = S(t) exp(-β t),  logS* = logS - β t,
-#   logpdf* = log h*(t) + logS*(t) = log(h(t) + β) + logS(t) - β t,
-# where log h(t) = logpdf - logccdf, so h(t) = exp(logpdf - logccdf).
-# Non-negativity of the effect keeps h* >= 0 everywhere (see the constructor);
-# the negative-effect clamped path stays upstream in CensoredDistributions.
+# With β >= 0 the effect, the additive hazard is h*(t) = h(t) + β for t in
+# the support. The extra hazard accrues from the support minimum m (finite by
+# construction), so for t > m
+#   H*(t) = H(t) + β (t - m),  S*(t) = S(t) exp(-β (t - m)),
+#   logS* = logS - β (t - m),
+#   logpdf* = log h*(t) + logS*(t) = log(f(t) + β S(t)) - β (t - m),
+# the density form f* = (f + β S) e^{-β (t - m)}, evaluated in log space. For
+# standard positive-support delay bases m = 0 and the accrual reduces to β t.
+# Accruing from m keeps survival continuous at the support edge (no spurious
+# point mass at m) and the density integrating to one. Non-negativity of the
+# effect keeps h* >= 0 everywhere (see the constructor); the negative-effect
+# clamped path stays upstream in CensoredDistributions.
 
 const _IdentityModified = Modified{
     <:UnivariateDistribution{Continuous}, <:Real, typeof(IdentityLink)}
@@ -383,9 +407,11 @@ Compute the log survival function on the additive-hazards path.
 See also: [`ccdf`](@ref), [`logpdf`](@ref)
 "
 function logccdf(d::_IdentityModified, x::Real)
-    # No hazard accrues below the support, so survival stays at one there.
-    x <= minimum(d.dist) && return zero(float(typeof(x)))
-    return logccdf(d.dist, x) - d.effect * x
+    # No hazard accrues below the support, so survival stays at one there;
+    # above it the extra hazard accrues from the support minimum.
+    m = minimum(d.dist)
+    x <= m && return zero(float(typeof(x)))
+    return logccdf(d.dist, x) - d.effect * (x - m)
 end
 
 @doc "
@@ -397,13 +423,14 @@ See also: [`pdf`](@ref), [`ccdf`](@ref)
 function logpdf(d::_IdentityModified, x::Real)
     insupport(d, x) || return oftype(float(x), -Inf)
     β = d.effect
+    m = minimum(d.dist)
     logS = logccdf(d.dist, x)
-    # h(t) = exp(logpdf - logS); the modified hazard h(t) + β stays
-    # non-negative because β >= 0 is enforced at construction.
-    h = exp(logpdf(d.dist, x) - logS)
-    hstar = h + β
-    hstar <= zero(hstar) && return oftype(float(x), -Inf)
-    return log(hstar) + logS - β * x
+    # f*(x) = h*(x) S*(x) = (f(x) + β S(x)) e^{-β (x - m)}, evaluated in log
+    # space so an upper support edge (S -> 0, base hazard -> Inf) stays
+    # finite instead of producing Inf - Inf. β >= 0 is enforced at
+    # construction, so log(β) is well defined (-Inf at β = 0, which drops
+    # the additive term).
+    return _logaddexp(logpdf(d.dist, x), log(β) + logS) - β * (x - m)
 end
 
 @doc "
@@ -418,15 +445,10 @@ function quantile(d::_IdentityModified, p::Real)
     p == zero(p) && return float(minimum(d))
     p == one(p) && return float(maximum(d))
     # The added hazard only speeds events up, so the modified quantile is
-    # bounded above by the base quantile; the support minimum bounds below.
+    # bounded above by the base quantile; the support minimum (finite by
+    # construction) bounds below.
     hi = float(quantile(d.dist, p))
     lo = float(minimum(d))
-    if !isfinite(lo)
-        lo = min(hi, zero(hi)) - one(hi)
-        while cdf(d, lo) > p
-            lo -= 2 * (hi - lo)
-        end
-    end
     while true
         mid = (lo + hi) / 2
         (mid == lo || mid == hi) && break
