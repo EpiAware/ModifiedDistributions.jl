@@ -45,6 +45,29 @@ end
     @test eltype(wd) == Float64
 end
 
+@testitem "Test Weight summary statistics delegate to underlying" begin
+    using Distributions, Statistics
+
+    d = Gamma(2.0, 1.5)
+    wd = weight(d, 7.0)
+
+    # The weight only affects logpdf; summary statistics describe the
+    # underlying distribution.
+    @test mean(wd) == mean(d)
+    @test var(wd) == var(d)
+    @test std(wd) == std(d)
+    @test median(wd) == median(d)
+    @test mode(wd) == mode(d)
+    @test skewness(wd) == skewness(d)
+    @test kurtosis(wd) == kurtosis(d)
+    @test entropy(wd) == entropy(d)
+
+    # Also with a missing constructor weight.
+    wd_missing = weight(d)
+    @test mean(wd_missing) == mean(d)
+    @test var(wd_missing) == var(d)
+end
+
 @testitem "Test Weight probability functions" begin
     using Distributions
 

@@ -20,8 +20,8 @@ module ModifiedDistributions
 using Random: AbstractRNG
 
 # Functions we extend (for method extension). `std`/`median`/`mode`/`skewness`/
-# `kurtosis` are extended by qualified name in Transformed.jl, so they are not
-# imported here.
+# `kurtosis`/`entropy` are extended by qualified name in Affine.jl, Weighted.jl
+# and Transformed.jl, so they are not imported here.
 import Distributions: params, insupport, pdf, logpdf, cdf, logcdf,
                       ccdf, logccdf, quantile, mean, var, sampler,
                       loglikelihood

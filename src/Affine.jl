@@ -116,6 +116,23 @@ logcdf(d::Affine, y::Real) = logcdf(d.dist, _affine_inv(d, y))
 
 @doc "
 
+Compute the complementary cumulative distribution function via change of
+variables (avoids the `1 - cdf` fallback, keeping precision in the upper tail).
+
+See also: [`cdf`](@ref), [`logccdf`](@ref)
+"
+ccdf(d::Affine, y::Real) = ccdf(d.dist, _affine_inv(d, y))
+
+@doc "
+
+Compute the log complementary cumulative distribution function.
+
+See also: [`ccdf`](@ref)
+"
+logccdf(d::Affine, y::Real) = logccdf(d.dist, _affine_inv(d, y))
+
+@doc "
+
 Compute the quantile function (inverse CDF).
 
 See also: [`cdf`](@ref)
@@ -147,3 +164,14 @@ Compute the variance via the affine transform of the inner variance.
 See also: [`mean`](@ref)
 "
 var(d::Affine) = d.scale^2 * var(d.dist)
+
+# Remaining summary statistics via the affine identities. These functions are
+# extended by qualified name (they are not imported at the top of the module).
+Distributions.std(d::Affine) = d.scale * Distributions.std(d.dist)
+Distributions.median(d::Affine) = d.scale * Distributions.median(d.dist) + d.shift
+Distributions.mode(d::Affine) = d.scale * Distributions.mode(d.dist) + d.shift
+# Skewness and (excess) kurtosis are invariant under a positive affine map.
+Distributions.skewness(d::Affine) = Distributions.skewness(d.dist)
+Distributions.kurtosis(d::Affine) = Distributions.kurtosis(d.dist)
+# Differential entropy picks up the log-Jacobian of the map.
+Distributions.entropy(d::Affine) = Distributions.entropy(d.dist) + log(d.scale)

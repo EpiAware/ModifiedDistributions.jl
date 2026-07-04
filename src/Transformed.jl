@@ -141,7 +141,7 @@ cumulative(dist::UnivariateDistribution) = Transformed(dist, CumulativeOp())
 # Transparency: delegate every distribution method to the inner distribution.
 
 for f in (:minimum, :maximum, :mean, :var, :std, :mode, :median,
-    :skewness, :kurtosis)
+    :skewness, :kurtosis, :entropy)
     @eval Distributions.$f(d::Transformed) = Distributions.$f(d.dist)
 end
 
@@ -152,6 +152,10 @@ end
 Distributions.insupport(d::Transformed, x::Real) = insupport(d.dist, x)
 
 Base.rand(rng::AbstractRNG, d::Transformed) = rand(rng, d.dist)
+
+# The forward op never touches sampling, so batch sampling can use the inner
+# distribution's specialised sampler directly.
+sampler(d::Transformed) = sampler(d.dist)
 
 Distributions.params(d::Transformed) = (params(d.dist)..., _op_params(d.op)...)
 

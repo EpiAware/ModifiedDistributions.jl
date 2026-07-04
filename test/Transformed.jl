@@ -44,7 +44,26 @@ end
         @test maximum(d) == maximum(inner)
         @test mean(d) == mean(inner)
         @test var(d) == var(inner)
+        @test std(d) == std(inner)
+        @test median(d) == median(inner)
+        @test mode(d) == mode(inner)
+        @test skewness(d) == skewness(inner)
+        @test kurtosis(d) == kurtosis(inner)
+        @test entropy(d) == entropy(inner)
     end
+end
+
+@testitem "forward transforms delegate sampling" begin
+    using ModifiedDistributions, Distributions, Random
+
+    inner = LogNormal(1.5, 0.5)
+    d = thin(inner, 0.3)
+
+    # sampler delegates to the inner distribution's sampler, so draws match
+    # the inner distribution's draws for the same seed.
+    @test rand(MersenneTwister(7), sampler(d), 5) ==
+          rand(MersenneTwister(7), sampler(inner), 5)
+    @test rand(MersenneTwister(7), d, 5) == rand(MersenneTwister(7), inner, 5)
 end
 
 @testitem "forward transforms surface op params and get_dist" begin

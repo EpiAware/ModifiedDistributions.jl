@@ -76,6 +76,50 @@ end
     @test params(d) == (params(inner)..., 3.0, 2.0)
 end
 
+@testitem "Affine ccdf and logccdf via change of variables" begin
+    using Distributions
+
+    inner = Gamma(2.0, 1.5)
+    d = affine(inner; scale = 3.0, shift = 2.0)
+    for y in [3.0, 5.0, 9.0, 20.0]
+        x = (y - 2.0) / 3.0
+        @test ccdf(d, y) ≈ ccdf(inner, x)
+        @test logccdf(d, y) ≈ logccdf(inner, x)
+    end
+
+    # Direct delegation keeps precision in the far upper tail, where the
+    # generic 1 - cdf fallback underflows to zero on the log scale.
+    dn = affine(Normal(0.0, 1.0); scale = 2.0, shift = 1.0)
+    y_far = 1.0 + 2.0 * 40.0  # 40 inner standard deviations out
+    @test isfinite(logccdf(dn, y_far))
+    @test logccdf(dn, y_far) ≈ logccdf(Normal(0.0, 1.0), 40.0)
+end
+
+@testitem "Affine summary statistics via affine identities" begin
+    using Distributions, Statistics
+
+    inner = Gamma(2.0, 1.5)
+    d = affine(inner; scale = 3.0, shift = 2.0)
+
+    @test std(d) ≈ 3.0 * std(inner)
+    @test median(d) ≈ 3.0 * median(inner) + 2.0
+    @test mode(d) ≈ 3.0 * mode(inner) + 2.0
+    @test skewness(d) == skewness(inner)
+    @test kurtosis(d) == kurtosis(inner)
+    @test entropy(d) ≈ entropy(inner) + log(3.0)
+
+    # Cross-check against a Distributions affine special: a scaled and
+    # shifted standard Normal is a relocated, rescaled Normal.
+    dn = affine(Normal(0.0, 1.0); scale = 2.5, shift = 1.0)
+    ref = Normal(1.0, 2.5)
+    @test std(dn) ≈ std(ref)
+    @test median(dn) ≈ median(ref)
+    @test mode(dn) ≈ mode(ref)
+    @test skewness(dn) == skewness(ref)
+    @test kurtosis(dn) == kurtosis(ref)
+    @test entropy(dn) ≈ entropy(ref)
+end
+
 @testitem "Affine eltype and get_dist" begin
     using Distributions
 
