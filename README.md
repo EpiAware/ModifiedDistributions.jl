@@ -10,18 +10,33 @@
 | [![cov ForwardDiff](https://codecov.io/gh/EpiAware/ModifiedDistributions.jl/graph/badge.svg?flag=ad-forwarddiff)](https://app.codecov.io/gh/EpiAware/ModifiedDistributions.jl?flags%5B0%5D=ad-forwarddiff) | [![cov ReverseDiff](https://codecov.io/gh/EpiAware/ModifiedDistributions.jl/graph/badge.svg?flag=ad-reversediff)](https://app.codecov.io/gh/EpiAware/ModifiedDistributions.jl?flags%5B0%5D=ad-reversediff) | [![cov Enzyme forward](https://codecov.io/gh/EpiAware/ModifiedDistributions.jl/graph/badge.svg?flag=ad-enzyme-forward)](https://app.codecov.io/gh/EpiAware/ModifiedDistributions.jl?flags%5B0%5D=ad-enzyme-forward) | [![cov Enzyme reverse](https://codecov.io/gh/EpiAware/ModifiedDistributions.jl/graph/badge.svg?flag=ad-enzyme-reverse)](https://app.codecov.io/gh/EpiAware/ModifiedDistributions.jl?flags%5B0%5D=ad-enzyme-reverse) | [![cov Mooncake reverse](https://codecov.io/gh/EpiAware/ModifiedDistributions.jl/graph/badge.svg?flag=ad-mooncake-reverse)](https://app.codecov.io/gh/EpiAware/ModifiedDistributions.jl?flags%5B0%5D=ad-mooncake-reverse) | [![cov Mooncake forward](https://codecov.io/gh/EpiAware/ModifiedDistributions.jl/graph/badge.svg?flag=ad-mooncake-forward)](https://app.codecov.io/gh/EpiAware/ModifiedDistributions.jl?flags%5B0%5D=ad-mooncake-forward) |
 <!-- badges:end -->
 
-_One-line description of ModifiedDistributions._
+Composable unary modifiers for [Distributions.jl](https://github.com/JuliaStats/Distributions.jl) univariate distributions: affine transforms, likelihood weights, and forward-series transforms, plus the generic `get_dist` unwrap protocol.
 
 ## Why ModifiedDistributions?
 
-- _List the package's key features here._
+- **Affine transforms**: `affine(dist; scale, shift)` gives the exact change-of-variables distribution of `Y = scale * X + shift`, supporting the full distribution interface (`logpdf`, `cdf`, `quantile`, sampling, and summary statistics).
+- **Likelihood weights**: `weight(dist, w)` scales `logpdf` by a weight — ideal for aggregated or count observations — with vectorised `Product` forms and observation-time weights via `(value = x, weight = w)` named tuples.
+- **Forward-series transforms**: `thin(dist, p)`, `cumulative(dist)`, and the generic `transform(dist, f)` carry deterministic operations for a downstream count series while staying transparent to `logpdf`.
+- **Generic unwrap protocol**: `get_dist` and `get_dist_recursive` extract the underlying distribution from any wrapper, and downstream packages can extend them for their own wrappers.
+- **AD-friendly**: tested in CI against ForwardDiff, ReverseDiff, Enzyme, and Mooncake.
 
 ## Getting started
 
 See [documentation](https://epiaware.org/ModifiedDistributions.jl/stable/) for a full walkthrough.
 
 ```julia
-using ModifiedDistributions
+using ModifiedDistributions, Distributions
+
+# An affine transform Y = 2X + 1 of a LogNormal.
+d = affine(LogNormal(1.5, 0.5); scale = 2.0, shift = 1.0)
+logpdf(d, 5.0)
+
+# Weight the log-likelihood contribution of an observation seen 10 times.
+wd = weight(d, 10.0)
+logpdf(wd, 5.0) ≈ 10.0 * logpdf(d, 5.0)
+
+# Unwrap back to the inner distribution.
+get_dist(wd) === d
 ```
 
 ## Where to learn more
