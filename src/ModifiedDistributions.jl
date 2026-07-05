@@ -32,8 +32,8 @@ import Distributions: params, insupport, pdf, logpdf, cdf, logcdf,
 # Base functions we extend that are re-exported by Distributions.
 import Base: minimum, maximum
 # Types and constructors we use without extension.
-using Distributions: Distributions, UnivariateDistribution, Discrete,
-                     ValueSupport, Product, product_distribution
+using Distributions: Distributions, UnivariateDistribution, Continuous,
+                     Discrete, ValueSupport, Product, product_distribution
 
 # Register the standard EpiAware docstring conventions before any
 # docstrings are defined (see src/docstrings.jl).
@@ -48,12 +48,15 @@ export weight
 # Forward-series transforms (transparent to `logpdf`): `transform` is the
 # generic verb, `thin`/`cumulative` the specialisations.
 export transform, thin, cumulative
+# `modify`: a hazard modification through a link (proportional or additive).
+export modify
 # The generic unwrap protocol owned by this package.
 export get_dist, get_dist_recursive
 
 include("Affine.jl")
 include("Weighted.jl")
 include("Transformed.jl")
+include("Modified.jl")
 include("get_dist.jl")
 
 # Public API - types that are part of the public interface but not exported.

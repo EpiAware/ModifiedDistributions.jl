@@ -34,8 +34,9 @@ end
 The AD gradient scenarios. Each is a `DIT.Scenario{:gradient, :out}` whose
 `res1` carries a ForwardDiff reference when `with_reference = true`. Covers the
 `affine` change-of-variables logpdf (gradient through the inner delay params,
-the scale, and the shift) and the `weight` count/aggregated-data likelihood
-(scalar and `Product{Weighted}` vector forms).
+the scale, and the shift), the `weight` count/aggregated-data likelihood
+(scalar and `Product{Weighted}` vector forms), and the `modify` log-link
+hazard logpdf (gradient through the inner params and the effect).
 """
 function scenarios(; with_reference::Bool = false, category::Symbol = :marginal)
     out = DIT.Scenario{:gradient, :out}[]
@@ -89,6 +90,19 @@ function scenarios(; with_reference::Bool = false, category::Symbol = :marginal)
     _push!("Product{Weighted} LogNormal vector logpdf",
         (θ, obs, cts) -> logpdf(weight(LogNormal(θ[1], θ[2]), cts), obs),
         [1.0, 0.75], (Constant(obs), Constant(counts)))
+
+    # Modified proportional-hazards (log-link) logpdf:
+    # `β + logpdf(base, x) + (exp(β) - 1) * logccdf(base, x)`, so the gradient
+    # flows through the inner delay params (θ[1], θ[2]) AND the hazard effect
+    # (θ[3]). The distribution is written as a literal so Enzyme differentiates
+    # cleanly.
+    obs_mod = [0.8, 1.6, 2.4, 4.0]
+    _push!("Modified LogNormal log-link logpdf",
+        (θ,
+            obs) -> sum(
+            x -> logpdf(modify(LogNormal(θ[1], θ[2]), θ[3]), x),
+            obs),
+        [1.0, 0.5, 0.4], (Constant(obs_mod),))
 
     return out
 end
