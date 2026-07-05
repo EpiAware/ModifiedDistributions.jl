@@ -32,8 +32,8 @@ import Distributions: params, insupport, pdf, logpdf, cdf, logcdf,
 # Base functions we extend that are re-exported by Distributions.
 import Base: minimum, maximum
 # Types and constructors we use without extension.
-using Distributions: Distributions, UnivariateDistribution, Discrete,
-                     ValueSupport, Product, product_distribution
+using Distributions: Distributions, UnivariateDistribution, Continuous,
+                     Discrete, ValueSupport, Product, product_distribution
 
 # Register the standard EpiAware docstring conventions before any
 # docstrings are defined (see src/docstrings.jl).
