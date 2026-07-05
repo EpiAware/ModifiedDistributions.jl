@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"
+     viewBox="0 0 400 300" role="img"
+     aria-label="ModifiedDistributions logo: a density curve modified into a scaled, shifted density">
+<title>ModifiedDistributions logo</title>
 <!-- ModifiedDistributions.jl logo: an original density (Julia green) modified
      into a scaled + shifted density (Julia purple); the dashed arrow is the
      modifier, the red dot the likelihood-weight accent. Sibling design to
