@@ -17,4 +17,4 @@ This file tracks notes for major releases and significant milestones; GitHub Rel
 
 ## v0.1.0 - Initial release
 
-Package scaffolded with EpiAwarePackageTools (managed CI, DocumenterVitepress docs, Aqua/ExplicitImports/JET quality gates, and the multi-backend AD test harness) (#9).
+Everything under Unreleased above ships as the initial registered release, on the EpiAwarePackageTools scaffold (managed CI, DocumenterVitepress docs, Aqua/ExplicitImports/JET quality gates, and the multi-backend AD test harness) (#9).

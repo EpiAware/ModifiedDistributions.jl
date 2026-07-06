@@ -1,7 +1,7 @@
 name = "ModifiedDistributions"
 uuid = "664e6f8c-d74f-44d3-9f37-f82699103046"
 authors = ["Sam Abbott", "EpiAware contributors"]
-version = "0.1.2"
+version = "0.1.0"
 
 [deps]
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
