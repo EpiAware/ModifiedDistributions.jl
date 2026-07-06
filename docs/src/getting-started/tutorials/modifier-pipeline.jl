@@ -35,16 +35,19 @@ using ModifiedDistributions, Distributions
 # `Y = scale * X + shift`.
 # It reparameterises any univariate distribution uniformly, including families
 # where Distributions.jl has no closed-form affine constructor.
+# The mean printed by the wrapper matches the manual `2 * mean + 1`.
 
 base = LogNormal(1.5, 0.5)
 scaled = affine(base; scale = 2.0, shift = 1.0)
-(mean(scaled), 2.0 * mean(base) + 1.0)
+(affine_mean = mean(scaled), manual = 2.0 * mean(base) + 1.0)
 
-# The full distribution interface follows the transform, including a
-# tail-accurate `ccdf` computed by change of variables rather than `1 - cdf`.
+# The full distribution interface follows the transform, including `ccdf`
+# computed directly by change of variables rather than via `1 - cdf`, so
+# upper-tail probabilities stay precise.
+# The two printed values agree.
 
 x = 6.0
-ccdf(scaled, x) ≈ ccdf(base, (x - 1.0) / 2.0)
+(affine_ccdf = ccdf(scaled, x), manual = ccdf(base, (x - 1.0) / 2.0))
 
 # ## Forward-series transforms on a daily-count series
 #
@@ -53,73 +56,79 @@ ccdf(scaled, x) ≈ ccdf(base, (x - 1.0) / 2.0)
 # downstream convolution layer produces, for example an expected incidence
 # curve.
 # The distribution methods stay transparent: `logpdf`, `rand` and the rest
-# delegate straight to the base.
+# delegate straight to the base, so the two log-densities printed below are
+# identical.
 
 delay = Gamma(2.0, 1.0)
 td = thin(delay, 0.3)          # ascertain 30% of the series
-logpdf(td, 2.0) == logpdf(delay, 2.0)
+(thinned = logpdf(td, 2.0), base = logpdf(delay, 2.0))
 
 # Sampling is likewise unchanged, because the forward op never touches the
-# distribution.
+# distribution: the same seed draws the same value from both.
 
 using Random
-(rand(Random.MersenneTwister(1), td), rand(Random.MersenneTwister(1), delay))
+(thinned = rand(Random.MersenneTwister(1), td),
+    base = rand(Random.MersenneTwister(1), delay))
 
 # The op materialises only when a series is passed through it.
-# The internal forward seam a convolution layer calls peels the ops off the
-# wrapper and applies them in order; here we drive it directly on a synthetic
-# daily count to show what the op does.
+# The internal hook a convolution layer calls peels the ops off the wrapper
+# and applies them in order; here we drive it directly on a synthetic daily
+# count to show what the op does.
+# Every day in the printed output is `0.3` times the input series.
 
 daily = [0.0, 5.0, 12.0, 20.0, 15.0, 8.0, 3.0]
 _, thin_ops = ModifiedDistributions._peel_forward(td)
-thinned = ModifiedDistributions._apply_forward_ops(daily, thin_ops)
-
-# Thinning scales every day by the ascertainment probability.
-
-thinned ≈ 0.3 .* daily
+ModifiedDistributions._apply_forward_ops(daily, thin_ops)
 
 # [`cumulative`](@ref) accumulates the series into a running total, turning a
-# daily count into a cumulative one.
+# daily count into a cumulative one — the printed series is the running sum
+# of `daily`.
 
 cd = cumulative(delay)
 _, cum_ops = ModifiedDistributions._peel_forward(cd)
-ModifiedDistributions._apply_forward_ops(daily, cum_ops) == cumsum(daily)
+ModifiedDistributions._apply_forward_ops(daily, cum_ops)
 
 # ## The generic transform escape hatch
 #
 # [`transform`](@ref) accepts any callable `series -> series`, for the cases
 # `thin` and `cumulative` do not cover.
-# It stays transparent to the distribution in exactly the same way.
+# Here the op shifts every day up by one, as the printed series shows.
 
 shift_op = transform(delay, s -> s .+ 1.0)
 _, shift_ops = ModifiedDistributions._peel_forward(shift_op)
-(logpdf(shift_op, 2.0) == logpdf(delay, 2.0),
-    ModifiedDistributions._apply_forward_ops(daily, shift_ops) == daily .+ 1.0)
+ModifiedDistributions._apply_forward_ops(daily, shift_ops)
+
+# It stays transparent to the distribution in exactly the same way: the two
+# log-densities printed below are identical.
+
+(transformed = logpdf(shift_op, 2.0), base = logpdf(delay, 2.0))
 
 # ## Hazard modification through a link
 #
 # [`modify`](@ref) changes a continuous distribution's hazard through a link.
 # The default `log` link gives proportional hazards: with effect `β` and
 # `θ = exp(β)`, the survival function is raised to the power `θ`.
+# The two printed values agree.
 
 hazard_base = Weibull(1.5, 2.0)
 β = 0.5
 prop = modify(hazard_base, β; link = log)
-ccdf(prop, 1.0) ≈ ccdf(hazard_base, 1.0)^exp(β)
+(modified = ccdf(prop, 1.0), base_power = ccdf(hazard_base, 1.0)^exp(β))
 
 # The identity link gives additive hazards for a non-negative effect.
 # A constant extra hazard `β` accrues from the support minimum, so the modified
-# survival is the base survival times `exp(-β (t - m))`.
+# survival is the base survival times `exp(-β (t - m))`, and the two printed
+# values agree.
 
 add = modify(hazard_base, 0.4; link = identity)
 m = minimum(hazard_base)
 t = 1.0
-ccdf(add, t) ≈ ccdf(hazard_base, t) * exp(-0.4 * (t - m))
+(modified = ccdf(add, t), manual = ccdf(hazard_base, t) * exp(-0.4 * (t - m)))
 
 # Both paths are closed form, so the modified distribution samples and
 # integrates like any other.
 
-(mean(rand(prop, 10_000)), cdf(add, 2.0))
+(sample_mean = mean(rand(prop, 10_000)), cdf_at_2 = cdf(add, 2.0))
 
 # ## Unwrapping a nested stack
 #
@@ -130,9 +139,10 @@ ccdf(add, t) ≈ ccdf(hazard_base, t) * exp(-0.4 * (t - m))
 stack = weight(thin(affine(base; scale = 2.0), 0.3), 5.0)
 get_dist(stack)          # one layer off: the Transformed wrapper
 
-# Recursive unwrapping returns the base distribution at the bottom of the stack.
+# Recursive unwrapping returns the base `LogNormal` at the bottom of the
+# stack — the very object we started with.
 
-get_dist_recursive(stack) === base
+get_dist_recursive(stack)
 
 # ## Summary
 #

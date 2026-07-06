@@ -3,8 +3,8 @@
 Welcome to the `ModifiedDistributions` documentation.
 This page is the quickstart: what the package is for, how to install it, and a tour of each modifier.
 
-`ModifiedDistributions` provides unary modifiers for [Distributions.jl](https://github.com/JuliaStats/Distributions.jl) univariate distributions.
-Each modifier wraps exactly one distribution and changes one behaviour, returning something that still works anywhere a distribution is expected.
+`ModifiedDistributions` provides modifiers for [Distributions.jl](https://github.com/JuliaStats/Distributions.jl) univariate distributions.
+A modifier is a wrapper around exactly one distribution that changes one behaviour, returning something that still works anywhere a distribution is expected.
 Modifiers nest freely, and the [`get_dist`](@ref) protocol unwraps them again.
 
 ## Installation
@@ -28,19 +28,20 @@ using ModifiedDistributions, Distributions
 
 ```@example quickstart
 d = affine(LogNormal(1.5, 0.5); scale = 2.0, shift = 1.0)
-(mean(d), logpdf(d, 5.0), quantile(d, 0.5))
+(mean = mean(d), logpdf = logpdf(d, 5.0), median = quantile(d, 0.5))
 ```
 
-The full distribution interface works, including sampling and tail-accurate `ccdf`/`logccdf`.
+The full distribution interface works, including sampling and `ccdf`/`logccdf` computed directly rather than via `1 - cdf`, so upper-tail probabilities stay precise.
 
 ## Likelihood weights
 
-[`weight`](@ref) scales the `logpdf` contribution of an observation, which is the standard trick for aggregated or count data:
+[`weight`](@ref) scales the `logpdf` contribution of an observation, which is the standard trick for aggregated or count data.
+The two numbers printed below match, showing the weighted log-density is exactly 25 times the base:
 
 ```@example quickstart
 base = Normal(2.0, 1.0)
 wd = weight(base, 25)  # an observation seen 25 times
-logpdf(wd, 3.5) ≈ 25 * logpdf(base, 3.5)
+(weighted = logpdf(wd, 3.5), manual = 25 * logpdf(base, 3.5))
 ```
 
 Weights can also arrive at observation time, or vectorised as a `Product` distribution:
@@ -55,28 +56,29 @@ wds = weight(base, [3, 1, 4])
 logpdf(wds, [1.9, 2.1, 2.3])
 ```
 
-Everything other than `logpdf` (sampling, `cdf`, quantiles, summary statistics) delegates to the underlying distribution.
+Everything other than `logpdf` (sampling, `cdf`, quantiles, summary statistics) delegates to the underlying distribution, so a weighted distribution stays a complete generative object in a probabilistic programming model.
 
 ## Forward-series transforms
 
 [`thin`](@ref) and [`cumulative`](@ref) attach a deterministic operation intended for a downstream count series (for example, one produced by a convolution layer): thinning by an ascertainment probability, or accumulating to cumulative incidence.
-They are transparent to every distribution method:
+They are transparent to every distribution method, so the two log-densities printed below are identical:
 
 ```@example quickstart
 td = thin(Gamma(2.0, 1.0), 0.3)
-logpdf(td, 2.0) == logpdf(Gamma(2.0, 1.0), 2.0)
+(thinned = logpdf(td, 2.0), base = logpdf(Gamma(2.0, 1.0), 2.0))
 ```
 
 The generic [`transform`](@ref) accepts any callable `series -> series` as an escape hatch.
 
 ## Hazard modification
 
-[`modify`](@ref) changes a continuous distribution's hazard function through a link:
+[`modify`](@ref) changes a continuous distribution's hazard function through a link.
+Under proportional hazards the survival function is raised to the power `exp(effect)`, and the two values printed below agree:
 
 ```@example quickstart
 base = Weibull(1.5, 2.0)
 md = modify(base, 0.5)  # proportional hazards: h*(t) = exp(0.5) * h(t)
-ccdf(md, 1.0) ≈ ccdf(base, 1.0)^exp(0.5)
+(modified = ccdf(md, 1.0), base_power = ccdf(base, 1.0)^exp(0.5))
 ```
 
 The default `log` link gives proportional hazards; `link = identity` gives additive hazards for non-negative effects.
@@ -103,10 +105,11 @@ using ModifiedDistributions, ComposedDistributions, Distributions
 chain = sequential(:onset_admit => Gamma(2.0, 1.0),
     :admit_death => LogNormal(0.5, 0.4))
 wd = weight(chain, 3.0)  # weights the chain's observed total
-logpdf(wd, 5.0) ≈ 3.0 * logpdf(observed_distribution(chain), 5.0)
+logpdf(wd, 5.0)          # 3 times the log-density of the observed total
 ```
 
-The [Modifiers across composed chains](@ref composed-chains) tutorial works through this in full.
+The extension in this package handles applying modifiers to a chain; the reverse direction — rewrapping modifier leaves inside a chain — lives in ComposedDistributions.jl.
+See the [Modifiers across composed chains](@ref composed-chains) tutorial for a worked example.
 
 ## Learning more
 

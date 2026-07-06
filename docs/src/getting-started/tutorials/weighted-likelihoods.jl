@@ -12,8 +12,10 @@
 # ### What are we going to do in this exercise
 #
 # 1. Meet the three ways to supply a weight.
-# 2. See why a zero or missing weight returns `-Inf` rather than `NaN`.
-# 3. Compute a weighted log-likelihood surface for aggregated count data with
+# 2. See that a weighted distribution still samples from its base, so it
+#    stays a complete generative model inside a PPL.
+# 3. See why a zero or missing weight returns `-Inf` rather than `NaN`.
+# 4. Compute a weighted log-likelihood surface for aggregated count data with
 #    plain Julia, and read the grid maximum off it.
 #
 # ### What might I need to know before starting
@@ -33,50 +35,81 @@ using ModifiedDistributions, Distributions
 # `weight(d, w)` fixes the weight when the distribution is built.
 # The weighted `logpdf` is exactly `w` times the base `logpdf`, so a value seen
 # `w` times contributes as if it appeared `w` times in the sum.
+# The two numbers printed below match.
 
 base = Normal(2.0, 1.0)
 wd = weight(base, 25)          # an observation recorded 25 times
-logpdf(wd, 3.5) ≈ 25 * logpdf(base, 3.5)
+(weighted = logpdf(wd, 3.5), manual = 25 * logpdf(base, 3.5))
 
 # Everything other than `logpdf` delegates to the base distribution, so the
 # weight leaves sampling, `cdf`, quantiles and moments untouched.
+# The mean and `cdf` of the weighted distribution printed below are those of
+# the base.
 
-(mean(wd), cdf(wd, 3.5)) == (mean(base), cdf(base, 3.5))
+(weighted = (mean(wd), cdf(wd, 3.5)), base = (mean(base), cdf(base, 3.5)))
 
 # ### A weight supplied at observation time
 #
 # `weight(d)` stores a `missing` constructor weight, so the weight arrives with
 # each observation as a `(value = x, weight = w)` named tuple.
+# The observation-time weight scales the log-density exactly as the
+# constructor weight did.
 
 wd_obs = weight(base)
-logpdf(wd_obs, (value = 3.5, weight = 25)) ≈ 25 * logpdf(base, 3.5)
+(observation_time = logpdf(wd_obs, (value = 3.5, weight = 25)),
+    manual = 25 * logpdf(base, 3.5))
 
 # When both a constructor weight and an observation weight are present they
 # multiply.
 # A distribution fixed at weight `2` and an observation weight `3` together
-# contribute six times the base log-density.
+# contribute six times the base log-density, as the printed pair shows.
 
-logpdf(weight(base, 2), (value = 3.5, weight = 3)) ≈ 6 * logpdf(base, 3.5)
+(combined = logpdf(weight(base, 2), (value = 3.5, weight = 3)),
+    manual = 6 * logpdf(base, 3.5))
 
 # ### Vectorised `Product` forms
 #
 # Passing a vector of weights builds a `Product` of weighted components, one per
 # observation.
 # Evaluating its `logpdf` on a vector of values sums the per-component weighted
-# log-densities.
+# log-densities, matching the manual weighted sum printed alongside.
 
 counts = [3, 1, 4]
 values = [1.9, 2.1, 2.3]
 wds = weight(base, counts)
-logpdf(wds, values) ≈ sum(counts .* logpdf.(base, values))
+(product = logpdf(wds, values),
+    manual = sum(counts .* logpdf.(base, values)))
 
 # The observation-time form vectorises the same way.
 # Building the `Product` with missing weights and supplying a
-# `(values = ..., weights = ...)` named tuple applies the weights per element.
+# `(values = ..., weights = ...)` named tuple applies the weights per element,
+# reproducing the same weighted sum.
 
 wds_obs = weight(fill(base, 3))
-logpdf(wds_obs, (values = values, weights = counts)) ≈
-sum(counts .* logpdf.(base, values))
+(product = logpdf(wds_obs, (values = values, weights = counts)),
+    manual = sum(counts .* logpdf.(base, values)))
+
+# ## Weighted distributions stay samplable
+#
+# The usual alternatives to `weight` in a probabilistic programming language
+# are an ad hoc `n * logpdf(d, x)` term or Turing.jl's `@addlogprob!`.
+# Both scale the likelihood, but neither leaves behind a distribution the
+# model can sample from.
+# A weighted distribution is still a real Distributions.jl object: sampling
+# delegates to the base while only the likelihood contribution is scaled, so
+# a Turing.jl model (or any PPL built on Distributions.jl) that uses it stays
+# a complete generative model, and prior simulation and posterior-predictive
+# draws keep working.
+# The draws printed below come straight from the base `Normal(2, 1)`.
+
+using Random
+rand(Random.Xoshiro(42), wd, 5)
+
+# The sample mean over many draws sits at the base mean, unmoved by the
+# weight of 25, while the log-density at the same point is scaled.
+
+(sample_mean = mean(rand(Random.Xoshiro(42), wd, 10_000)),
+    base_mean = mean(base))
 
 # ## Why zero and missing weights give `-Inf`
 #
@@ -129,8 +162,10 @@ best = argmax(surface)
 
 # The grid estimate matches the count-weighted sample mean, the closed-form
 # maximiser for a Normal mean, up to the grid spacing.
+# The two printed values agree to within half a grid step.
 
 weighted_mean = sum(tally .* observed) / sum(tally)
+(grid_estimate = μ_grid[best], weighted_mean = weighted_mean)
 
 # A short table of the surface near its peak shows the curvature the maximiser
 # sits in.
@@ -144,8 +179,13 @@ end
 #
 # - `weight(d, w)`, `weight(d)` with `(value =, weight =)`, and the vectorised
 #   `Product` forms cover fixed, observation-time and per-element weights.
+# - A weighted distribution still samples from its base, so a Turing.jl model
+#   using it stays a complete generative model with working prior and
+#   posterior-predictive simulation.
 # - A zero or missing weight returns `-Inf`, keeping the log-density and its
 #   gradient well defined.
 # - A weighted `Product` turns aggregated counts into a single `logpdf` call,
 #   enough to trace a log-likelihood surface and read off a grid estimate with
 #   plain Julia.
+# - To weight the observed total of a composed chain of delays, see the
+#   [Modifiers across composed chains](@ref composed-chains) tutorial.

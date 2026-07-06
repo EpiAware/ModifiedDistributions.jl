@@ -8,7 +8,7 @@
 # steps.
 # When ComposedDistributions is loaded alongside ModifiedDistributions a package
 # extension lets the modifier verbs apply to a chain directly.
-# A unary modifier on a chain modifies that observed scalar: the chain collapses
+# A modifier on a chain modifies that observed scalar: the chain collapses
 # to its convolved total first, then the modifier wraps the resulting univariate
 # distribution.
 #
@@ -17,7 +17,8 @@
 # 1. Build a `Sequential` chain and collapse it with `observed_distribution`.
 # 2. Apply [`weight`](@ref), [`affine`](@ref) and [`thin`](@ref) to the chain
 #    and check the modifier lands on the chain's observed scalar.
-# 3. Note the seam between this forward extension and the reverse seam upstream.
+# 3. See how this package and ComposedDistributions.jl split the work between
+#    them.
 #
 # ### What might I need to know before starting
 #
@@ -56,49 +57,56 @@ typeof(observed)
 # ## A modifier lands on the observed scalar
 #
 # [`weight`](@ref) on the chain weights the observed total.
-# The extension collapses the chain to `observed` and weights that, so the
-# weighted `logpdf` matches weighting the observed scalar directly.
+# The extension collapses the chain to `observed` and weights that, so the two
+# log-densities printed below match: weighting the chain is weighting the
+# observed scalar.
 
 wd = weight(chain, 3.0)
-logpdf(wd, 5.0) ≈ 3.0 * logpdf(observed, 5.0)
+(weighted_chain = logpdf(wd, 5.0), manual = 3.0 * logpdf(observed, 5.0))
 
 # Unwrapping the weighted chain with [`get_dist`](@ref) recovers a univariate
-# distribution, the observed scalar, rather than the multivariate chain, and it
-# behaves like the collapsed total.
+# distribution, the observed scalar, rather than the multivariate chain.
 
 unwrapped = get_dist(wd)
-(unwrapped isa UnivariateDistribution,
-    logpdf(unwrapped, 5.0) == logpdf(observed, 5.0))
+typeof(unwrapped)
 
-# [`affine`](@ref) reparameterises the observed total the same way.
+# It behaves like the collapsed total: the two log-densities printed below
+# are identical.
+
+(unwrapped = logpdf(unwrapped, 5.0), observed = logpdf(observed, 5.0))
+
+# [`affine`](@ref) reparameterises the observed total the same way, matching
+# the affine transform of the collapsed distribution.
 
 ad = affine(chain; scale = 2.0, shift = 1.0)
-logpdf(ad, 10.0) ≈ logpdf(affine(observed; scale = 2.0, shift = 1.0), 10.0)
+(affine_chain = logpdf(ad, 10.0),
+    manual = logpdf(affine(observed; scale = 2.0, shift = 1.0), 10.0))
 
 # [`thin`](@ref) attaches a forward-series op to the chain's observed total and
-# stays transparent to `logpdf`, exactly as it does for a plain distribution.
+# stays transparent to `logpdf`, exactly as it does for a plain distribution:
+# the two log-densities printed below are identical.
 
 td = thin(chain, 0.3)
-logpdf(td, 5.0) == logpdf(observed, 5.0)
+(thinned = logpdf(td, 5.0), observed = logpdf(observed, 5.0))
 
 # The observation-time weight forms carry over too, since they are defined on
-# the collapsed scalar.
+# the collapsed scalar; the printed pair matches again.
 
 wd_obs = weight(chain)
-logpdf(wd_obs, (value = 5.0, weight = 3.0)) ≈ 3.0 * logpdf(observed, 5.0)
+(observation_time = logpdf(wd_obs, (value = 5.0, weight = 3.0)),
+    manual = 3.0 * logpdf(observed, 5.0))
 
-# ## The seam
+# ## How the two packages fit together
 #
-# This extension is the forward direction: a modifier applied to a whole chain
-# modifies the scalar the chain observes.
-# The reverse direction, a modified leaf sitting inside a composed tree, is
-# handled by a seam upstream in ComposedDistributions
-# (`free_leaf` / `rewrap_leaf` and shared tags), so a chain built from already
-# modified steps composes correctly there.
-# The two seams meet at the boundary between the two packages: this package owns
-# the modifier verbs, ComposedDistributions owns the chain types, and each
-# extension lives with the package that depends on both, so neither commits type
-# piracy.
+# The extension in this package handles the forward direction: a modifier
+# applied to a whole chain modifies the scalar the chain observes.
+# The reverse direction — rewrapping modifier leaves sitting inside a composed
+# tree (`free_leaf` / `rewrap_leaf` and shared tags) — lives in
+# ComposedDistributions.jl, so a chain built from already modified steps
+# composes correctly there.
+# The split follows package ownership: this package owns the modifier verbs,
+# ComposedDistributions owns the chain types, and each extension lives with
+# the package that depends on both, so neither commits type piracy.
 # A `Parallel` has several independent endpoints and so no single observed
 # scalar, so the modifier verbs are not defined for it.
 #
@@ -109,5 +117,6 @@ logpdf(wd_obs, (value = 5.0, weight = 3.0)) ≈ 3.0 * logpdf(observed, 5.0)
 # - [`weight`](@ref), [`affine`](@ref) and [`thin`](@ref) on a chain modify that
 #   observed scalar, matching the modifier applied to the collapsed
 #   distribution.
-# - The forward extension here pairs with a reverse seam upstream, so modifiers
-#   compose with chains from either side.
+# - This package applies modifiers to a chain; ComposedDistributions.jl
+#   handles modifier leaves inside a chain, so modifiers compose with chains
+#   from either side.
