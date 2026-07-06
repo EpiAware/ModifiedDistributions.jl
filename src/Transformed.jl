@@ -88,7 +88,8 @@ Thin a distribution's forward count by a probability `p`.
 `thin(d, p)` is [`series_transform`](@ref) with a fixed factor `p ∈ [0, 1]` intended to
 be multiplied into a downstream count series (e.g. ascertainment of cases, the
 infection fatality ratio for deaths). Transparent to `logpdf`. `thin(d, nothing)`
-returns `d` unchanged.
+returns `d` unchanged. Under the ConvolvedDistributions extension the carried
+op applies to the convolved count series.
 
 # Arguments
 - `d`: the inner distribution.
@@ -118,9 +119,11 @@ thin(dist::UnivariateDistribution, ::Nothing) = dist
 
 Accumulate a distribution's forward count series.
 
-`cumulative(d)` is [`transform`](@ref) with a running-sum op intended for a
-downstream count series, giving cumulative counts (cumulative incidence,
-cumulative deaths). Transparent to `logpdf`.
+`cumulative(d)` is [`series_transform`](@ref) with a running-sum op intended
+for a downstream count series, giving cumulative counts (cumulative
+incidence, cumulative deaths). Transparent to `logpdf`. Under the
+ConvolvedDistributions extension the carried op applies to the convolved
+count series.
 
 # Arguments
 - `d`: the inner distribution.
