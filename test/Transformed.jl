@@ -112,3 +112,56 @@ end
     @test ModifiedDistributions._apply_forward_ops(series, nested_ops) ==
           cumsum(0.5 .* series)
 end
+
+@testitem "Transformed batched vector observations" begin
+    using Distributions
+
+    inner = Gamma(2.0, 1.0)
+    xs = [0.5, 1.0, 2.5]
+
+    # Per-point results equal the scalar map, with a stable eltype. A vector
+    # observation on a modifier is per-point (vector result), unlike the
+    # Product{Weighted} joint-scalar convention.
+    for d in (thin(inner, 0.3), cumulative(inner),
+        series_transform(inner, s -> 2.0 .* s))
+        for f in (logpdf, pdf, cdf, logcdf, ccdf, logccdf)
+            batched = f(d, xs)
+            @test batched ≈ map(x -> f(d, x), xs)
+            @test batched isa Vector{Float64}
+        end
+    end
+end
+
+@testitem "Transformed delegates a whole batch to the inner distribution" begin
+    using Distributions
+
+    # A spy inner distribution counting scalar vs batched calls. Forward
+    # transforms are transparent, so a vector observation must delegate to
+    # the inner distribution as one batched call per function.
+    struct SpyDist <: ContinuousUnivariateDistribution
+        dist::Gamma{Float64}
+        nscalar::Base.RefValue{Int}
+        nvector::Base.RefValue{Int}
+    end
+    SpyDist() = SpyDist(Gamma(2.0, 1.0), Ref(0), Ref(0))
+    for f in (:pdf, :logpdf, :cdf, :logcdf, :ccdf, :logccdf)
+        @eval function Distributions.$f(d::SpyDist, x::Real)
+            d.nscalar[] += 1
+            return Distributions.$f(d.dist, x)
+        end
+        @eval function Distributions.$f(
+                d::SpyDist, x::AbstractVector{<:Real})
+            d.nvector[] += 1
+            return map(Base.Fix1(Distributions.$f, d.dist), x)
+        end
+    end
+
+    spy = SpyDist()
+    d = thin(spy, 0.3)
+    xs = [0.5, 1.0, 2.5]
+    for f in (logpdf, pdf, cdf, logcdf, ccdf, logccdf)
+        f(d, xs)
+    end
+    @test spy.nscalar[] == 0
+    @test spy.nvector[] == 6
+end
