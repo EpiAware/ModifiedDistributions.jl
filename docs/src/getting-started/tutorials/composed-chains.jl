@@ -47,9 +47,11 @@ event_names(chain)
 
 # A downstream observation sees one quantity: the total elapsed time from origin
 # to the terminal event, the convolution of the steps.
-# `observed_distribution` lowers the chain to that univariate scalar.
+# `observed_distribution` lowers the chain to that univariate scalar (we show
+# its type — printing the full object dumps its quadrature internals).
 
 observed = observed_distribution(chain)
+typeof(observed)
 
 # ## A modifier lands on the observed scalar
 #
