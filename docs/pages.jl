@@ -10,6 +10,11 @@ pages = [
     # as the package grows.
     "Getting started" => [
         "Overview" => "getting-started/index.md",
+        "Tutorials" => [
+            "Weighted likelihoods" => "getting-started/tutorials/weighted-likelihoods.md",
+            "A modifier pipeline" => "getting-started/tutorials/modifier-pipeline.md",
+            "Modifiers across composed chains" => "getting-started/tutorials/composed-chains.md"
+        ],
         "FAQ" => "getting-started/faq.md",
         "Infrastructure and template sync" => "getting-started/infrastructure.md"
     ],

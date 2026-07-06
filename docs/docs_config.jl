@@ -11,7 +11,11 @@
 #
 # Light tutorials emit `@example` blocks that Documenter runs in-process; keep
 # cheap tutorials here.
-const LIGHT_TUTORIALS = String[]
+const LIGHT_TUTORIALS = [
+    "weighted-likelihoods.jl",
+    "modifier-pipeline.jl",
+    "composed-chains.jl"
+]
 
 # Heavy tutorials (live MCMC fits, multi-backend AD, plotting) are each
 # executed once in a fresh subprocess so native/memory state cannot accumulate.
