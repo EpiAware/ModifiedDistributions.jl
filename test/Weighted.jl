@@ -1,4 +1,4 @@
-@testitem "Test Weight constructor" begin
+@testitem "Weighted constructor" begin
     using Distributions
 
     # Test valid construction
@@ -24,7 +24,7 @@
     @test weight(d, nothing) === d
 end
 
-@testitem "Test Weight distribution interface" begin
+@testitem "Weighted distribution interface" begin
     using Distributions
 
     d = LogNormal(1.5, 0.5)
@@ -45,7 +45,7 @@ end
     @test eltype(wd) == Float64
 end
 
-@testitem "Test Weight summary statistics delegate to underlying" begin
+@testitem "Weighted summary statistics delegate to underlying" begin
     using Distributions, Statistics
 
     d = Gamma(2.0, 1.5)
@@ -68,7 +68,7 @@ end
     @test var(wd_missing) == var(d)
 end
 
-@testitem "Test Weight probability functions" begin
+@testitem "Weighted probability functions" begin
     using Distributions
 
     d = Normal(2.0, 1.0)
@@ -92,7 +92,7 @@ end
     @test quantile(wd, 0.5) == quantile(d, 0.5)
 end
 
-@testitem "Test Weight with zero weight" begin
+@testitem "Weighted with zero weight" begin
     using Distributions
 
     d = Normal(0, 1)
@@ -107,7 +107,7 @@ end
     @test cdf(wd, 0.0) == cdf(d, 0.0)
 end
 
-@testitem "Test Weight sampling" begin
+@testitem "Weighted sampling" begin
     using Distributions
     using Random
     using Statistics
@@ -132,7 +132,7 @@ end
     @test s.weight == w
 end
 
-@testitem "Test Weight with different numeric types" begin
+@testitem "Weighted with different numeric types" begin
     using Distributions
 
     d = Normal(0, 1)
@@ -147,7 +147,7 @@ end
     @test logpdf(wd_float32, 0.0) ≈ 2.5 * logpdf(d, 0.0)
 end
 
-@testitem "Test Weight product distribution constructor" begin
+@testitem "Weighted product distribution constructor" begin
     using Distributions
 
     d = Normal(1, 2)
@@ -216,7 +216,7 @@ end
     @test logpdf(wd, x) == -Inf
 end
 
-@testitem "Test Weight with truncated distributions" begin
+@testitem "Weighted with truncated distributions" begin
     using Distributions
 
     d = truncated(Normal(0, 1), -2, 2)
@@ -234,7 +234,7 @@ end
     @test logpdf(wd, x) == w * logpdf(d, x)
 end
 
-@testitem "Test Weighted with missing constructor weights" begin
+@testitem "Weighted with missing constructor weights" begin
     using Distributions
 
     # Test construction with missing weight
@@ -251,7 +251,7 @@ end
     @test logpdf(wd, (value = 0.0, weight = 2.0)) == 2.0 * logpdf(d, 0.0)
 end
 
-@testitem "Test joint observation support" begin
+@testitem "Joint observation support" begin
     using Distributions
 
     d = Normal(2.0, 1.0)
@@ -268,7 +268,7 @@ end
     @test logpdf(wd, joint_obs) == expected_logpdf
 end
 
-@testitem "Test weight combination rules" begin
+@testitem "Weight combination rules" begin
     using Distributions
     using ModifiedDistributions: combine_weights
 
@@ -309,7 +309,7 @@ end
     @test result_mixed == [10.0, 5.0, 15.0]
 end
 
-@testitem "Test weight() constructor with missing weights" begin
+@testitem "weight() constructor with missing weights" begin
     using Distributions
 
     dists = [Normal(0, 1), Normal(1, 1), Normal(2, 1)]
@@ -326,7 +326,7 @@ end
     end
 end
 
-@testitem "Test Product{<:Any, <:Weighted} logpdf with joint observations" begin
+@testitem "Product{<:Any, <:Weighted} logpdf with joint observations" begin
     using Distributions
 
     # Create weighted distributions
@@ -346,7 +346,7 @@ end
     @test logpdf(weighted_dists, joint_obs) ≈ expected
 end
 
-@testitem "Test Product{<:Any, <:Weighted} with missing constructor weights" begin
+@testitem "Product{<:Any, <:Weighted} with missing constructor weights" begin
     using Distributions
 
     # Create weighted distributions with missing constructor weights
@@ -364,7 +364,7 @@ end
     @test logpdf(weighted_dists, joint_obs) ≈ expected
 end
 
-@testitem "Test mixed missing weights in Product distribution" begin
+@testitem "Mixed missing weights in Product distribution" begin
     using Distributions
 
     # Create mixed scenario: some with weights, some without
@@ -389,7 +389,7 @@ end
     @test logpdf(mixed_dist, joint_obs) ≈ expected
 end
 
-@testitem "Test weight stacking with zero weights" begin
+@testitem "Weight stacking with zero weights" begin
     using Distributions
 
     d = Normal(0, 1)
@@ -403,7 +403,7 @@ end
     @test logpdf(wd_nonzero, (value = 1.0, weight = 0.0)) == -Inf
 end
 
-@testitem "Test type stability" begin
+@testitem "Type stability" begin
     using Distributions
 
     d = Normal(0.0, 1.0)
@@ -419,7 +419,7 @@ end
     @test logpdf(wd_missing, 0.0) isa Float64  # -Inf is Float64
 end
 
-@testitem "Test Product distribution with zero weights in vector" begin
+@testitem "Product distribution with zero weights in vector" begin
     using Distributions
 
     # Edge case where final_weights contains zeros after combination
@@ -440,7 +440,7 @@ end
     @test logpdf(mixed_zero, [0.5, 1.5]) == -Inf
 end
 
-@testitem "Test loglikelihood with vectorized NamedTuple observations" begin
+@testitem "loglikelihood with vectorised NamedTuple observations" begin
     using Distributions
 
     d = Normal(0, 1)
@@ -469,7 +469,7 @@ end
                                  for (v, w) in zip(values, weights)])
 end
 
-@testitem "Test weight(dist) constructor with missing weight" begin
+@testitem "weight(dist) constructor with missing weight" begin
     using Distributions
 
     d = Normal(2.0, 1.0)
@@ -493,7 +493,7 @@ end
     @test logpdf(wd, (value = 1.0, weight = 0.0)) == -Inf
 end
 
-@testitem "Test loglikelihood for single Weighted scalar joint observations" begin
+@testitem "loglikelihood for single Weighted scalar joint observations" begin
     using Distributions
 
     d = Normal(1.0, 0.5)
@@ -514,7 +514,7 @@ end
     @test result_missing == 4.0 * logpdf(d, 2.0)
 end
 
-@testitem "Test loglikelihood for Product distribution with joint observations" begin
+@testitem "loglikelihood for Product distribution with joint observations" begin
     using Distributions
 
     dists = [Normal(0, 1), Normal(1, 1), Normal(2, 1)]
@@ -534,7 +534,7 @@ end
     @test result ≈ expected_manual
 end
 
-@testitem "Test weight() method coverage" begin
+@testitem "weight() method coverage" begin
     using Distributions
 
     d = LogNormal(1.0, 0.5)
