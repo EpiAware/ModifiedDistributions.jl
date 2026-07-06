@@ -24,7 +24,7 @@ Distributions = "0.25"
 DocStringExtensions = "0.9"
 Random = "1"
 Test = "1"
-julia = "1.10, 1.11, 1.12"
+julia = "1.11, 1.12"
 
 [workspace]
 projects = ["test", "docs"]

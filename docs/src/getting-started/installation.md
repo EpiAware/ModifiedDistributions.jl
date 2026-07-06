@@ -13,4 +13,15 @@ Load it alongside Distributions.jl:
 using ModifiedDistributions, Distributions
 ```
 
+The composed-chain and convolution tutorials additionally use
+[ComposedDistributions.jl](https://github.com/EpiAware/ComposedDistributions.jl) and
+[ConvolvedDistributions.jl](https://github.com/EpiAware/ConvolvedDistributions.jl).
+Until those packages reach the General registry, install them by URL:
+
+```julia
+using Pkg
+Pkg.add(url = "https://github.com/EpiAware/ConvolvedDistributions.jl")
+Pkg.add(url = "https://github.com/EpiAware/ComposedDistributions.jl")
+```
+
 The [Getting started](@ref getting-started) overview tours each modifier with worked examples.
