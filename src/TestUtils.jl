@@ -12,8 +12,8 @@
 #
 # Deviation from CensoredDistributions' integration/composed-stack harness:
 # the `free_leaf` / `rewrap_leaf` round-trip check is not built in, because
-# those verbs are owned by ComposedDistributions.jl and live in its extension
-# seam. The optional `roundtrip` keyword lets CensoredDistributions /
+# those verbs are owned by ComposedDistributions.jl and live in its package
+# extension. The optional `roundtrip` keyword lets CensoredDistributions /
 # ComposedDistributions inject the round-trip check when they are loaded.
 
 """
@@ -57,7 +57,7 @@ contract.
 `minimum` / `maximum` do not throw. Returns the `@testset` object.
 
 The `free_leaf` / `rewrap_leaf` round-trip is not checked here: those verbs
-are owned by ComposedDistributions.jl and live in its extension seam. Pass
+are owned by ComposedDistributions.jl and live in its package extension. Pass
 `roundtrip = (free_leaf, rewrap_leaf)` to inject the round-trip check
 (`rewrap(d, free(d))` must rebuild an equivalent leaf) when a package
 providing them is loaded.

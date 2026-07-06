@@ -28,8 +28,8 @@ Required methods a concrete subtype implements (the leaf interface):
 - optionally `Base.show`; the default below prints `Name(inner)`.
 
 The `free_leaf` / `rewrap_leaf` round-trip verbs are owned by
-ComposedDistributions.jl and live in its extension seam, so they are not part
-of this package's contract.
+ComposedDistributions.jl and live in its package extension, so they are not
+part of this package's contract.
 
 Verify a subtype with
 `ModifiedDistributions.TestUtils.test_modified_interface`.
