@@ -39,7 +39,11 @@ const TUTORIAL_STUBS = Pair{String, String}[]
 #   drop the ignore once it is.
 const LINKCHECK_IGNORE = [
     r"^https://modifieddistributions\.epiaware\.org/stable",
-    r"^https://github\.com/EpiAware/ModifiedDistributions\.jl/discussions"
+    r"^https://github\.com/EpiAware/ModifiedDistributions\.jl/discussions",
+    # External sites that intermittently time out under CI linkcheck (seen
+    # flaking on unrelated runs); the links are stable, the checks are not.
+    r"^https://code\.visualstudio\.com",
+    r"^https://github\.com/go-task/task/releases"
 ]
 
 # README -> index.md link rewrites: `from => to` pairs applied line by line,
