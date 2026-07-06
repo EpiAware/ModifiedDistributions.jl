@@ -112,6 +112,20 @@ logpdf(wd, 5.0)          # 3 times the log-density of the observed total
 The extension in this package handles applying modifiers to a chain; the reverse direction — rewrapping modifier leaves inside a chain — lives in ComposedDistributions.jl.
 See the [Modifiers across composed chains](@ref composed-chains) tutorial for a worked example.
 
+Loading [ConvolvedDistributions.jl](https://github.com/EpiAware/ConvolvedDistributions.jl) activates a second extension.
+Its series method `convolve_distributions(delay, series)` turns an expected-events series into expected downstream counts, and the extension makes the forward-series transforms act on those counts: [`thin`](@ref) rescales them by an ascertainment fraction, [`cumulative`](@ref) accumulates them, and [`series_transform`](@ref) applies any callable.
+It also lets the modifier wrappers serve as components of a distribution-level convolution, including under automatic differentiation:
+
+```julia
+using ModifiedDistributions, ConvolvedDistributions, Distributions
+
+total = convolve_distributions(Gamma(2.0, 1.0), LogNormal(0.5, 0.4))
+infections = [0.0, 10.0, 40.0, 90.0, 60.0, 20.0]
+convolve_distributions(thin(total, 0.3), infections)  # 30% ascertained counts
+```
+
+See the [Convolving modified distributions](@ref convolved-modifiers) tutorial for a worked example.
+
 ## Learning more
 
 - Want the full interface? See the [Public API](@ref public-api).

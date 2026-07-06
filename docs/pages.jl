@@ -14,7 +14,8 @@ pages = [
         "Tutorials" => [
             "Weighted likelihoods" => "getting-started/tutorials/weighted-likelihoods.md",
             "A modifier pipeline" => "getting-started/tutorials/modifier-pipeline.md",
-            "Modifiers across composed chains" => "getting-started/tutorials/composed-chains.md"
+            "Modifiers across composed chains" => "getting-started/tutorials/composed-chains.md",
+            "Convolving modified distributions" => "getting-started/tutorials/convolved-modifiers.md"
         ],
         "Julia" => "getting-started/julia.md",
         "FAQ" => "getting-started/faq.md"
