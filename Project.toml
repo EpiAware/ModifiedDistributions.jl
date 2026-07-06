@@ -11,12 +11,15 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [weakdeps]
 ComposedDistributions = "2f642b71-32a9-4f47-97c4-6deb7517f7a7"
+ConvolvedDistributions = "f5b942c9-bc5b-4664-8486-7f531bb06742"
 
 [extensions]
 ModifiedDistributionsComposedDistributionsExt = "ComposedDistributions"
+ModifiedDistributionsConvolvedDistributionsExt = "ConvolvedDistributions"
 
 [compat]
 ComposedDistributions = "0.1"
+ConvolvedDistributions = "0.1"
 Distributions = "0.25"
 DocStringExtensions = "0.9"
 Random = "1"

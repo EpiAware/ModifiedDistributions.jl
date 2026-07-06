@@ -17,6 +17,10 @@ using Distributions: Gamma, LogNormal, logpdf
 # ModifiedDistributionsComposedDistributionsExt extension, whose collapse of a
 # `Sequential` chain to its observed convolved total is exercised below.
 using ComposedDistributions: sequential
+# Loading ConvolvedDistributions activates
+# ModifiedDistributionsConvolvedDistributionsExt, whose series handshake
+# (a thinned convolved count series) is exercised below.
+using ConvolvedDistributions: convolve_distributions
 using ADTypes: AutoForwardDiff, AutoReverseDiff, AutoMooncake,
                AutoMooncakeForward, AutoEnzyme
 using DifferentiationInterface: DifferentiationInterface, Constant
@@ -45,9 +49,11 @@ likelihood (scalar, `Product{Weighted}` vector, and observation-time weight
 forms), the `modify` hazard logpdf on both links (log and identity; gradient
 through the inner params and the effect), the `thin`/`cumulative` forward
 transforms (transparent delegation to the inner logpdf), a nested
-`weight`-over-`affine` stack (gradients through both wrappers at once), and
-the ComposedDistributions extension (`weight` of a `Sequential` chain,
-collapsing to the observed convolved total via the numeric quadrature).
+`weight`-over-`affine` stack (gradients through both wrappers at once), the
+ComposedDistributions extension (`weight` of a `Sequential` chain,
+collapsing to the observed convolved total via the numeric quadrature), and
+the ConvolvedDistributions extension (a thinned convolved count series,
+whose interval masses differentiate through the delay params).
 """
 function scenarios(; with_reference::Bool = false, category::Symbol = :marginal)
     out = DIT.Scenario{:gradient, :out}[]
@@ -198,6 +204,18 @@ function scenarios(; with_reference::Bool = false, category::Symbol = :marginal)
                 obs[i]),
             eachindex(obs)),
         [2.0, 1.0], (Constant(obs), Constant(counts)))
+
+    # ConvolvedDistributions extension: the series handshake peels the thin
+    # op off the wrapper, convolves the series with the inner Gamma delay's
+    # discretised PMF (interval masses through the AD-safe CDF helpers, so
+    # the gradient flows through the delay params), then thins the counts.
+    # The thin factor is data (a literal), as in the thin logpdf scenario.
+    series_conv = [0.0, 5.0, 12.0, 20.0, 15.0, 8.0, 3.0]
+    _push!("Thinned convolved series sum",
+        (θ,
+            series) -> sum(convolve_distributions(
+            thin(Gamma(θ[1], θ[2]), 0.3), series)),
+        [2.0, 1.0], (Constant(series_conv),))
 
     return out
 end
