@@ -8,7 +8,7 @@ Built on the EpiAwarePackageTools scaffold: managed CI, DocumenterVitepress docs
 
 ### Features
 
-- Ported the `Affine` modifier from CensoredDistributions.jl: `affine(dist; scale, shift)` gives the exact change-of-variables distribution of `scale * X + shift`, including tail-accurate `ccdf`/`logccdf`, summary statistics, and discrete-support handling (#10, #13).
+- Ported the `Affine` modifier from CensoredDistributions.jl: `affine(dist; scale, shift)` gives the exact change-of-variables distribution of `scale * X + shift`, including direct `ccdf`/`logccdf` (precise in the upper tail), summary statistics, and discrete-support handling (#10, #13).
 - Ported the `Weighted` modifier: `weight(dist, w)` scales `logpdf` by a weight for aggregated or count observations, with observation-time weights, vectorised `Product` forms, and delegated summary statistics (#10, #13).
 - Ported the `Transformed` forward-series modifier with `thin`/`cumulative`/`transform`, transparent to every distribution method (#10).
 - Added the generic `get_dist`/`get_dist_recursive` unwrap protocol, extendable by downstream wrapper packages (#10).
