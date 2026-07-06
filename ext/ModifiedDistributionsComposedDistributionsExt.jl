@@ -2,14 +2,14 @@
 #
 # Modifiers across a composed tree. A composed `Sequential` chain observes one
 # scalar quantity — `observed_distribution`, the convolved total of its steps —
-# so a unary modifier applied to the chain modifies that observed quantity: the
+# so a modifier applied to the chain modifies that observed quantity: the
 # chain collapses first, then the modifier wraps the resulting univariate
 # distribution. The univariate composers (`Resolve`, `Compete`, `Choose`, a
 # `Convolved`) need no methods here: the modifier constructors accept any
 # `UnivariateDistribution` directly. A `Parallel` has no single observed scalar,
 # so it stays unsupported (no methods are added for it).
 #
-# The reverse seam — a modified leaf INSIDE a composed tree (`free_leaf` /
+# The reverse direction — a modified leaf INSIDE a composed tree (`free_leaf` /
 # `rewrap_leaf` / shared tags) — lives upstream in ComposedDistributions'
 # `ComposedDistributionsModifiedDistributionsExt`.
 #
