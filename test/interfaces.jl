@@ -65,3 +65,17 @@ end
         @test any(fix -> fix.d isa T, fixtures)
     end
 end
+
+@testitem "roundtrip injection hook" begin
+    using Distributions
+    using ModifiedDistributions.TestUtils: test_modified_interface
+
+    # The `roundtrip` keyword injects a `(free, rewrap)` pair, standing in
+    # for ComposedDistributions' `free_leaf` / `rewrap_leaf` verbs. A weight
+    # leaf frees to its inner distribution and rewraps with the same weight.
+    d = weight(LogNormal(1.5, 0.5), 3.0)
+    free = get_dist
+    rewrap = (wd, inner) -> weight(inner, wd.weight)
+    ts = test_modified_interface(d; x = 2.0, roundtrip = (free, rewrap))
+    @test ts isa Test.AbstractTestSet
+end
