@@ -2,7 +2,8 @@
 # `ADRegistry` contract: scenarios (each with a ForwardDiff reference), a backend
 # list, and broken/skip bookkeeping. The shared harness (driven from
 # `test/ad/setup.jl`) consumes these. The scenarios are the package's modifier
-# log densities (`affine`, `weight`); the reference gradient is ForwardDiff.
+# log densities (`affine`, `weight`, `modify`, `thin`/`cumulative` and nested
+# stacks of them); the reference gradient is ForwardDiff.
 module ADFixtures
 
 # `__precompile__(false)` skips the precompile cache so the Mooncake load chain
@@ -11,8 +12,13 @@ module ADFixtures
 __precompile__(false)
 
 using ModifiedDistributions
-using Distributions: LogNormal, logpdf
-using ADTypes: AutoForwardDiff, AutoReverseDiff, AutoMooncake, AutoEnzyme
+using Distributions: Gamma, LogNormal, logpdf
+# Loading ComposedDistributions activates the package's
+# ModifiedDistributionsComposedDistributionsExt extension, whose collapse of a
+# `Sequential` chain to its observed convolved total is exercised below.
+using ComposedDistributions: sequential
+using ADTypes: AutoForwardDiff, AutoReverseDiff, AutoMooncake,
+               AutoMooncakeForward, AutoEnzyme
 using DifferentiationInterface: DifferentiationInterface, Constant
 import DifferentiationInterfaceTest as DIT
 import ForwardDiff, ReverseDiff, Mooncake, Enzyme
@@ -32,11 +38,16 @@ end
     scenarios(; with_reference = false, category = :marginal)
 
 The AD gradient scenarios. Each is a `DIT.Scenario{:gradient, :out}` whose
-`res1` carries a ForwardDiff reference when `with_reference = true`. Covers the
-`affine` change-of-variables logpdf (gradient through the inner delay params,
-the scale, and the shift), the `weight` count/aggregated-data likelihood
-(scalar and `Product{Weighted}` vector forms), and the `modify` log-link
-hazard logpdf (gradient through the inner params and the effect).
+`res1` carries a ForwardDiff reference when `with_reference = true`. Covers
+the `affine` change-of-variables logpdf (gradient through the inner delay
+params, the scale, and the shift), the `weight` count/aggregated-data
+likelihood (scalar, `Product{Weighted}` vector, and observation-time weight
+forms), the `modify` hazard logpdf on both links (log and identity; gradient
+through the inner params and the effect), the `thin`/`cumulative` forward
+transforms (transparent delegation to the inner logpdf), a nested
+`weight`-over-`affine` stack (gradients through both wrappers at once), and
+the ComposedDistributions extension (`weight` of a `Sequential` chain,
+collapsing to the observed convolved total via the numeric quadrature).
 """
 function scenarios(; with_reference::Bool = false, category::Symbol = :marginal)
     out = DIT.Scenario{:gradient, :out}[]
@@ -104,6 +115,90 @@ function scenarios(; with_reference::Bool = false, category::Symbol = :marginal)
             obs),
         [1.0, 0.5, 0.4], (Constant(obs_mod),))
 
+    # Modified additive-hazards (identity-link) logpdf:
+    # `log(f(x) + β S(x)) - β (x - m)` via `_logaddexp` with the accrual from
+    # the support minimum `m`, so the gradient flows through the inner delay
+    # params (θ[1], θ[2]) AND the additive effect. The effect is `exp(θ[3])`
+    # (a positive transform), so the constructor's non-negativity check
+    # cannot trip during finite perturbations of θ.
+    _push!("Modified LogNormal identity-link logpdf",
+        (θ,
+            obs) -> sum(
+            x -> logpdf(
+                modify(LogNormal(θ[1], θ[2]), exp(θ[3]); link = identity),
+                x),
+            obs),
+        [1.0, 0.5, -0.9], (Constant(obs_mod),))
+
+    # Transformed thin logpdf: the forward op is transparent to `logpdf`, so
+    # the gradient flows through the inner delay params only. The thin factor
+    # is data (a literal), not a differentiated parameter, since `thin`
+    # validates p ∈ [0, 1].
+    _push!("Transformed thin LogNormal logpdf",
+        (θ,
+            obs) -> sum(
+            x -> logpdf(thin(LogNormal(θ[1], θ[2]), 0.3), x), obs),
+        [1.0, 0.75], (Constant(obs),))
+
+    # Transformed cumulative logpdf: the same transparent delegation with the
+    # running-sum op carried for a downstream count series.
+    _push!("Transformed cumulative LogNormal logpdf",
+        (θ,
+            obs) -> sum(
+            x -> logpdf(cumulative(LogNormal(θ[1], θ[2])), x), obs),
+        [1.0, 0.75], (Constant(obs),))
+
+    # Weighted observation-time weight path: the constructor weight is
+    # `missing`, so the joint observation `(value = x, weight = w)` supplies
+    # the weight. The weights are inactive `Constant` data; the gradient
+    # flows through the inner delay params only.
+    _push!("Weighted LogNormal observation-time weight logpdf",
+        (θ,
+            obs,
+            cts) -> sum(
+            i -> logpdf(weight(LogNormal(θ[1], θ[2])),
+                (value = obs[i], weight = cts[i])),
+            eachindex(obs)),
+        [1.0, 0.75], (Constant(obs), Constant(counts)))
+
+    # Nested modifier stack: a likelihood weight over an affine transform, so
+    # the gradient flows through both wrappers at once — the inner delay
+    # params (θ[1], θ[2]) and the affine scale (θ[3]) and shift (θ[4]). The
+    # weights stay inactive `Constant` data.
+    wts_nest = [3.0, 1.0, 4.0, 2.0]
+    _push!("Weighted Affine LogNormal nested logpdf",
+        (θ,
+            obs,
+            cts) -> sum(
+            i -> logpdf(
+                weight(
+                    affine(LogNormal(θ[1], θ[2]);
+                        scale = θ[3], shift = θ[4]),
+                    cts[i]),
+                obs[i]),
+            eachindex(obs)),
+        [1.0, 0.5, 2.0, 1.0], (Constant(obs_aff), Constant(wts_nest)))
+
+    # ComposedDistributions extension: `weight(seq, w)` collapses a
+    # `Sequential` chain to its observed convolved total and weights that
+    # total's logpdf. The differentiated params sit on the leading Gamma step
+    # so the gradient flows through the AD-safe numeric convolution
+    # quadrature; the trailing LogNormal is the integration component (its
+    # window quantile stays off the AD path) and the weights are data. This
+    # mirrors ConvolvedDistributions' own Gamma+LogNormal AD scenario.
+    _push!("Weighted Sequential observed-total logpdf",
+        (θ,
+            obs,
+            cts) -> sum(
+            i -> logpdf(
+                weight(
+                    sequential(:a => Gamma(θ[1], θ[2]),
+                        :b => LogNormal(0.5, 0.4)),
+                    cts[i]),
+                obs[i]),
+            eachindex(obs)),
+        [2.0, 1.0], (Constant(obs), Constant(counts)))
+
     return out
 end
 
@@ -120,9 +215,16 @@ function backends()
             backend = AutoReverseDiff(compile = false)),
         (name = "Mooncake reverse",
             backend = AutoMooncake(config = nothing)),
+        (name = "Mooncake forward", backend = AutoMooncakeForward()),
+        # `set_runtime_activity` is the only user-facing Enzyme setting
+        # needed; no `function_annotation = Duplicated`, because the
+        # differentiated functions capture no data (see `scenarios`).
         (name = "Enzyme reverse",
             backend = AutoEnzyme(
-                mode = Enzyme.set_runtime_activity(Enzyme.Reverse)))
+                mode = Enzyme.set_runtime_activity(Enzyme.Reverse))),
+        (name = "Enzyme forward",
+            backend = AutoEnzyme(
+                mode = Enzyme.set_runtime_activity(Enzyme.Forward)))
     ]
 end
 
