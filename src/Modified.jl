@@ -317,9 +317,7 @@ function Base.show(io::IO, d::Modified)
     return nothing
 end
 
-# ============================================================================
-# Log link: analytic proportional hazards
-# ============================================================================
+# Log link: analytic proportional hazards.
 #
 # With β the effect and θ = exp(β), the modified survival is S^θ:
 # logS* = θ logS, H* = θ H, h* = θ h, so
@@ -380,9 +378,7 @@ function Base.rand(rng::AbstractRNG, d::_LogModified)
     return quantile(d.dist, 1 - u^(1 / θ))
 end
 
-# ============================================================================
-# Identity link: analytic additive hazards (effect >= 0)
-# ============================================================================
+# Identity link: analytic additive hazards (effect >= 0).
 #
 # With β >= 0 the effect, the additive hazard is h*(t) = h(t) + β for t in
 # the support. The extra hazard accrues from the support minimum m (finite by
@@ -467,9 +463,7 @@ function Base.rand(rng::AbstractRNG, d::_IdentityModified)
     return quantile(d, rand(rng))
 end
 
-# ============================================================================
-# Shared interface: derive the rest from logccdf / logpdf
-# ============================================================================
+# Shared interface: derive the rest from logccdf / logpdf.
 
 @doc "
 

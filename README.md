@@ -21,18 +21,6 @@ Composable unary modifiers for [Distributions.jl](https://github.com/JuliaStats/
 - **Generic unwrap protocol**: `get_dist` and `get_dist_recursive` extract the underlying distribution from any wrapper, and downstream packages can extend them for their own wrappers.
 - **AD-friendly**: tested in CI against ForwardDiff, ReverseDiff, Enzyme, and Mooncake.
 
-## Relationship to Distributions.jl
-
-Distributions.jl already supports affine arithmetic on some distributions (`2.0 * X + 1.0`) by returning a new parameterisation where one exists.
-`affine` instead wraps any univariate distribution with the exact change-of-variables maths, so it works uniformly and keeps the inner distribution recoverable via `get_dist`.
-Likewise `weight` replaces ad hoc `n * logpdf(d, x)` terms in model code with a distribution object that carries its weight, and `modify` gives hazard-scale transforms that have no Distributions.jl counterpart.
-
-## What packages work well with ModifiedDistributions.jl?
-
-- [Distributions.jl](https://github.com/JuliaStats/Distributions.jl) supplies the distributions being modified.
-- [Turing.jl](https://github.com/TuringLang/Turing.jl) and other PPLs consume the wrappers directly, e.g. weighted likelihoods for aggregated data.
-- [CensoredDistributions.jl](https://github.com/EpiAware/CensoredDistributions.jl) and the wider [EpiAware](https://github.com/EpiAware) ecosystem build censoring, convolution, and composition layers on top of these modifiers.
-
 ## Getting started
 
 See [documentation](https://epiaware.org/ModifiedDistributions.jl/stable/) for a full walkthrough.
@@ -56,6 +44,18 @@ ccdf(md, 2.0) ≈ ccdf(LogNormal(1.5, 0.5), 2.0)^0.5
 get_dist(wd) === d
 ```
 
+## Relationship to Distributions.jl
+
+Distributions.jl already supports affine arithmetic on some distributions (`2.0 * X + 1.0`) by returning a new parameterisation where one exists.
+`affine` instead wraps any univariate distribution with the exact change-of-variables maths, so it works uniformly and keeps the inner distribution recoverable via `get_dist`.
+Likewise `weight` replaces ad hoc `n * logpdf(d, x)` terms in model code with a distribution object that carries its weight, and `modify` gives hazard-scale transforms that have no Distributions.jl counterpart.
+
+## What packages work well with ModifiedDistributions.jl?
+
+- [Distributions.jl](https://github.com/JuliaStats/Distributions.jl) supplies the distributions being modified.
+- [Turing.jl](https://github.com/TuringLang/Turing.jl) and other PPLs consume the wrappers directly, e.g. weighted likelihoods for aggregated data.
+- [CensoredDistributions.jl](https://github.com/EpiAware/CensoredDistributions.jl) and the wider [EpiAware](https://github.com/EpiAware) ecosystem build censoring, convolution, and composition layers on top of these modifiers.
+
 ## Where to learn more
 
 - [GitHub Discussions](https://github.com/EpiAware/ModifiedDistributions.jl/discussions)
@@ -69,14 +69,14 @@ We welcome contributions and new contributors! This package follows [ColPrac](ht
 
 If you would like to support ModifiedDistributions, please star the repository — such metrics help secure future funding.
 
-If you use ModifiedDistributions in your work, please cite it:
+If you use ModifiedDistributions in your work, please cite it (the DOI is a placeholder until the first Zenodo release):
 
 ```bibtex
 @software{ModifiedDistributions_jl,
   author       = {Sam Abbott and EpiAware contributors},
   title        = {ModifiedDistributions.jl},
   year         = {2026},
-  doi          = {10.5281/zenodo.XXXXXXX}, # replace once released
+  doi          = {10.5281/zenodo.XXXXXXX},
   url          = {https://github.com/EpiAware/ModifiedDistributions.jl}
 }
 ```
