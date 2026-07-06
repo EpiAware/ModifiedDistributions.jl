@@ -1,12 +1,23 @@
 # Public API declarations for Julia 1.11+.
-# The modifier wrapper types are public but not exported; users build them via
-# the exported constructors (`affine`, `weight`, `thin`/`cumulative`,
-# `modify`). The hazard-link types and `hazard_link` are public for link
-# construction and dispatch.
+#
+# Policy: the constructor verbs (`affine`, `weight`, `thin`/`cumulative`,
+# `modify`) are exported; the wrapper types and link machinery below are
+# public but not exported. This follows CensoredDistributions.jl's
+# sparse-surface precedent (CensoredDistributions#739/#717): the types are
+# needed for dispatch and documentation, not for construction, so they stay
+# off the export list.
+
+# The wrapper types, public so downstream code can dispatch on them
+# (e.g. `get_dist(d::ModifiedDistributions.Affine)` extensions).
 public Affine
 public Weighted
 public Transformed
 public Modified
+# The hazard-link machinery: `HazardLink` for dispatch, the named link
+# constants for explicit `link =` arguments, and `hazard_link` to wrap a
+# custom link pair. Qualified access (`ModifiedDistributions.LogLink`) is
+# intended; the bare functions `log`/`identity` and the symbols
+# `:log`/`:identity` cover the common cases without any qualification.
 public HazardLink
 public LogLink
 public IdentityLink
