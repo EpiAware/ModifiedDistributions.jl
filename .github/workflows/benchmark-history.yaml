@@ -70,12 +70,7 @@ jobs:
         id: revs
         run: |
           TAGS=$(git tag --sort=-v:refname | head -5 | paste -sd, -)
-          # A repo with no tags yet must not emit a leading comma.
-          if [ -n "$TAGS" ]; then
-            echo "revs=${TAGS},${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
-          else
-            echo "revs=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
-          fi
+          echo "revs=${TAGS},${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
 
       # benchpkg benchmarks each rev against benchmark/benchmarks.jl
       # (the default script benchpkg discovers in benchmark/). --bench-on

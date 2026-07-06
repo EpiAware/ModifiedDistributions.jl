@@ -13,11 +13,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # The test env pins the unregistered EpiAwarePackageTools via [sources],
-  # which Pkg only understands on Julia >= 1.11, so lts (1.10) is excluded
-  # from the matrix and the downgrade suite runs on 1.11 until the kit is
-  # registered. The package itself still supports 1.10.
-  # See EpiAware/EpiAwarePackageTools.jl#115.
   test:
     uses: EpiAware/.github/.github/workflows/tests.yml@dc919e0d1674c16d1518df07eda5ee0be09b47e2
     with:
