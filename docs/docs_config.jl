@@ -37,9 +37,13 @@ const TUTORIAL_STUBS = Pair{String, String}[]
 #   ignore once the docs are live.
 # - GitHub Discussions is not yet enabled on the repo (needs an admin);
 #   drop the ignore once it is.
+# - The benchmark workflow link 404s until this PR merges to main (the
+#   file only exists on this PR's branch so far); drop the ignore once
+#   merged.
 const LINKCHECK_IGNORE = [
     r"^https://epiaware\.org/ModifiedDistributions\.jl",
-    r"^https://github\.com/EpiAware/ModifiedDistributions\.jl/discussions"
+    r"^https://github\.com/EpiAware/ModifiedDistributions\.jl/discussions",
+    r"^https://github\.com/EpiAware/ModifiedDistributions\.jl/blob/main/\.github/workflows/benchmark\.yaml"
 ]
 
 # README -> index.md link rewrites: `from => to` pairs applied line by line,
@@ -66,4 +70,4 @@ const INDEX_STRIP_SECTIONS = String[]
 # history (the timeline published to the repo's `benchmarks` branch). Defaults
 # to the `benchmarks` flag the package was scaffolded with; `false` drops the
 # page and `make.jl` also omits its `pages.jl` nav entry.
-const BENCHMARK_PAGE = false
+const BENCHMARK_PAGE = true

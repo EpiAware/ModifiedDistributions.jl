@@ -22,6 +22,7 @@ pages = [
         "Public API" => "lib/public.md",
         "Internal API" => "lib/internals.md"
     ],
+    "Benchmarks" => "benchmarks.md",
     "Development" => [
         "Writing a new modifier" => "developer/extending.md"
     ],
