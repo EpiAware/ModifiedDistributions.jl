@@ -61,6 +61,10 @@ Likewise `weight` replaces ad hoc `n * logpdf(d, x)` terms in model code with a 
 - [GitHub Discussions](https://github.com/EpiAware/ModifiedDistributions.jl/discussions)
 - [GitHub Repository](https://github.com/EpiAware/ModifiedDistributions.jl)
 
+## Contributing
+
+We welcome contributions and new contributors! This package follows [ColPrac](https://github.com/SciML/ColPrac) and the [SciML style](https://github.com/SciML/SciMLStyle).
+
 ## Supporting and citing
 
 If you would like to support ModifiedDistributions, please star the repository — such metrics help secure future funding.
@@ -76,10 +80,6 @@ If you use ModifiedDistributions in your work, please cite it (the DOI is a plac
   url          = {https://github.com/EpiAware/ModifiedDistributions.jl}
 }
 ```
-
-## Contributing
-
-We welcome contributions and new contributors! This package follows [ColPrac](https://github.com/SciML/ColPrac) and the [SciML style](https://github.com/SciML/SciMLStyle).
 
 ## Code of conduct
 
