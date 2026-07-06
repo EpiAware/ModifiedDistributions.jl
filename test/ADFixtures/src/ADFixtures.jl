@@ -17,7 +17,8 @@ using Distributions: Gamma, LogNormal, logpdf
 # ModifiedDistributionsComposedDistributionsExt extension, whose collapse of a
 # `Sequential` chain to its observed convolved total is exercised below.
 using ComposedDistributions: sequential
-using ADTypes: AutoForwardDiff, AutoReverseDiff, AutoMooncake, AutoEnzyme
+using ADTypes: AutoForwardDiff, AutoReverseDiff, AutoMooncake,
+               AutoMooncakeForward, AutoEnzyme
 using DifferentiationInterface: DifferentiationInterface, Constant
 import DifferentiationInterfaceTest as DIT
 import ForwardDiff, ReverseDiff, Mooncake, Enzyme
@@ -214,9 +215,16 @@ function backends()
             backend = AutoReverseDiff(compile = false)),
         (name = "Mooncake reverse",
             backend = AutoMooncake(config = nothing)),
+        (name = "Mooncake forward", backend = AutoMooncakeForward()),
+        # `set_runtime_activity` is the only user-facing Enzyme setting
+        # needed; no `function_annotation = Duplicated`, because the
+        # differentiated functions capture no data (see `scenarios`).
         (name = "Enzyme reverse",
             backend = AutoEnzyme(
-                mode = Enzyme.set_runtime_activity(Enzyme.Reverse)))
+                mode = Enzyme.set_runtime_activity(Enzyme.Reverse))),
+        (name = "Enzyme forward",
+            backend = AutoEnzyme(
+                mode = Enzyme.set_runtime_activity(Enzyme.Forward)))
     ]
 end
 
