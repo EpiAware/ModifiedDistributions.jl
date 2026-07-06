@@ -118,7 +118,6 @@ ModifiedDistributions._apply_forward_ops(daily, cum_ops)
 #
 # [`series_transform`](@ref) accepts any callable `series -> series`, for the cases
 # `thin` and `cumulative` do not cover.
-# It is public but not exported, so reach it by its qualified name.
 # Here the op shifts every day up by one, as the printed series shows.
 
 shift_op = series_transform(delay, s -> s .+ 1.0)
