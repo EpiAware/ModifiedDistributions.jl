@@ -22,6 +22,10 @@ get_dist(wd) === d
 module ModifiedDistributions
 
 using Random: AbstractRNG
+# Docstring-template machinery used by src/docstrings.jl (imports are
+# centralised here per the kit's import-centralisation gate).
+using DocStringExtensions: @template, DOCSTRING, EXPORTS, IMPORTS, TYPEDEF,
+                           TYPEDFIELDS, TYPEDSIGNATURES
 
 # Functions we extend (for method extension). `std`/`median`/`mode`/`skewness`/
 # `kurtosis`/`entropy` are extended by qualified name in Affine.jl, Weighted.jl
