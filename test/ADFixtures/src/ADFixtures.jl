@@ -12,7 +12,11 @@ module ADFixtures
 __precompile__(false)
 
 using ModifiedDistributions
-using Distributions: LogNormal, logpdf
+using Distributions: Gamma, LogNormal, logpdf
+# Loading ComposedDistributions activates the package's
+# ModifiedDistributionsComposedDistributionsExt extension, whose collapse of a
+# `Sequential` chain to its observed convolved total is exercised below.
+using ComposedDistributions: sequential
 using ADTypes: AutoForwardDiff, AutoReverseDiff, AutoMooncake, AutoEnzyme
 using DifferentiationInterface: DifferentiationInterface, Constant
 import DifferentiationInterfaceTest as DIT
@@ -39,8 +43,10 @@ params, the scale, and the shift), the `weight` count/aggregated-data
 likelihood (scalar, `Product{Weighted}` vector, and observation-time weight
 forms), the `modify` hazard logpdf on both links (log and identity; gradient
 through the inner params and the effect), the `thin`/`cumulative` forward
-transforms (transparent delegation to the inner logpdf), and a nested
-`weight`-over-`affine` stack (gradients through both wrappers at once).
+transforms (transparent delegation to the inner logpdf), a nested
+`weight`-over-`affine` stack (gradients through both wrappers at once), and
+the ComposedDistributions extension (`weight` of a `Sequential` chain,
+collapsing to the observed convolved total via the numeric quadrature).
 """
 function scenarios(; with_reference::Bool = false, category::Symbol = :marginal)
     out = DIT.Scenario{:gradient, :out}[]
@@ -171,6 +177,26 @@ function scenarios(; with_reference::Bool = false, category::Symbol = :marginal)
                 obs[i]),
             eachindex(obs)),
         [1.0, 0.5, 2.0, 1.0], (Constant(obs_aff), Constant(wts_nest)))
+
+    # ComposedDistributions extension: `weight(seq, w)` collapses a
+    # `Sequential` chain to its observed convolved total and weights that
+    # total's logpdf. The differentiated params sit on the leading Gamma step
+    # so the gradient flows through the AD-safe numeric convolution
+    # quadrature; the trailing LogNormal is the integration component (its
+    # window quantile stays off the AD path) and the weights are data. This
+    # mirrors ConvolvedDistributions' own Gamma+LogNormal AD scenario.
+    _push!("Weighted Sequential observed-total logpdf",
+        (θ,
+            obs,
+            cts) -> sum(
+            i -> logpdf(
+                weight(
+                    sequential(:a => Gamma(θ[1], θ[2]),
+                        :b => LogNormal(0.5, 0.4)),
+                    cts[i]),
+                obs[i]),
+            eachindex(obs)),
+        [2.0, 1.0], (Constant(obs), Constant(counts)))
 
     return out
 end
