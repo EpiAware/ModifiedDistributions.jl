@@ -21,7 +21,9 @@ end
 let
     d = cumulative(BASE)
 
-    SUITE["Transformed"]["cumulative"]["construction"] = @benchmarkable cumulative($BASE)
+    SUITE["Transformed"]["cumulative"]["construction"] = @benchmarkable begin
+        cumulative($BASE)
+    end
     SUITE["Transformed"]["cumulative"]["logpdf"] = @benchmarkable logpdf.(
         $d, $TEST_XS)
     SUITE["Transformed"]["cumulative"]["cdf"] = @benchmarkable cdf.(

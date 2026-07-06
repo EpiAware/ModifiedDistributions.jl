@@ -16,4 +16,5 @@ The suite (`benchmark/benchmarks.jl`) evaluates construction, `logpdf`, `pdf`, `
 - `Modified`: the hazard modification on both analytic links; the identity-link `quantile` and `rand` exercise the monotone-bisection cdf inversion, the one non-closed-form path.
 
 Run the suite locally with `task benchmark`, or compare against `main` with `task benchmark-compare` (see `benchmark/README.md`).
-On pull requests the [benchmark workflow](https://github.com/EpiAware/ModifiedDistributions.jl/blob/main/.github/workflows/benchmark.yaml) benchmarks head and base in separate jobs and posts a single comparison comment; pushes to `main` and tags append to the performance history shown below.
+On pull requests the [benchmark workflow](https://github.com/EpiAware/ModifiedDistributions.jl/blob/main/.github/workflows/benchmark.yaml) benchmarks head and base in separate jobs and posts a single comparison comment.
+Pushes to `main` and tags append to the performance history shown below.
