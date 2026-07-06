@@ -31,9 +31,14 @@
 #
 # Loading ComposedDistributions activates the extension; no extra import is
 # needed to reach the modifier methods for a chain.
+# CairoMakie and AlgebraOfGraphics are used for plotting only.
 
 using ModifiedDistributions, Distributions
 using ComposedDistributions
+using CairoMakie, AlgebraOfGraphics
+
+CairoMakie.activate!(type = "png", px_per_unit = 2)
+set_theme!(theme_latexfonts(); fontsize = 14)
 
 # ## A sequential chain and its observed scalar
 #
@@ -81,6 +86,25 @@ typeof(unwrapped)
 ad = affine(chain; scale = 2.0, shift = 1.0)
 (affine_chain = logpdf(ad, 10.0),
     manual = logpdf(affine(observed; scale = 2.0, shift = 1.0), 10.0))
+
+# Plotting the observed total's density next to its affine transform shows
+# the modifier acting on the chain's one observed quantity: the transformed
+# density is stretched, shifted and lowered relative to the total.
+
+ts = collect(range(0.0, 25.0; length = 200))
+total_curves = (
+    t = vcat(ts, ts),
+    density = vcat(pdf.(observed, ts), pdf.(ad, ts)),
+    dist = vcat(fill("observed total", length(ts)),
+        fill("affine 2X + 1", length(ts)))
+)
+draw(
+    data(total_curves) *
+    mapping(:t => "Total delay", :density => "Probability density",
+        color = :dist => "Distribution") *
+    visual(Lines, linewidth = 2);
+    figure = (size = (600, 350),)
+)
 
 # [`thin`](@ref) attaches a forward-series op to the chain's observed total and
 # stays transparent to `logpdf`, exactly as it does for a plain distribution:

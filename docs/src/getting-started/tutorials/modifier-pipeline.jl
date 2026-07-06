@@ -23,11 +23,18 @@
 # ### What might I need to know before starting
 #
 # This tutorial builds on the [Getting started](@ref getting-started) overview
-# and uses only Distributions.jl and ModifiedDistributions.jl.
+# and uses Distributions.jl and ModifiedDistributions.jl, with CairoMakie and
+# AlgebraOfGraphics for the figures.
 
 # ## Packages used
+#
+# CairoMakie and AlgebraOfGraphics are used for plotting only.
 
 using ModifiedDistributions, Distributions
+using CairoMakie, AlgebraOfGraphics
+
+CairoMakie.activate!(type = "png", px_per_unit = 2)
+set_theme!(theme_latexfonts(); fontsize = 14)
 
 # ## Affine reparameterisation
 #
@@ -40,6 +47,25 @@ using ModifiedDistributions, Distributions
 base = LogNormal(1.5, 0.5)
 scaled = affine(base; scale = 2.0, shift = 1.0)
 (affine_mean = mean(scaled), manual = 2.0 * mean(base) + 1.0)
+
+# Plotting the two densities shows what the transform does: the affine copy
+# is stretched to twice the width, shifted right by one, and half the height,
+# exactly as a change of variables requires.
+
+xs = collect(range(0.0, 30.0; length = 300))
+affine_curves = (
+    x = vcat(xs, xs),
+    density = vcat(pdf.(base, xs), pdf.(scaled, xs)),
+    dist = vcat(fill("base LogNormal", length(xs)),
+        fill("affine 2X + 1", length(xs)))
+)
+draw(
+    data(affine_curves) *
+    mapping(:x => "y", :density => "Probability density",
+        color = :dist => "Distribution") *
+    visual(Lines, linewidth = 2);
+    figure = (size = (600, 350),)
+)
 
 # The full distribution interface follows the transform, including `ccdf`
 # computed directly by change of variables rather than via `1 - cdf`, so
@@ -114,6 +140,28 @@ hazard_base = Weibull(1.5, 2.0)
 β = 0.5
 prop = modify(hazard_base, β; link = log)
 (modified = ccdf(prop, 1.0), base_power = ccdf(hazard_base, 1.0)^exp(β))
+
+# Plotting the survival functions shows the effect directly: a hazard
+# increase (`β = 0.5`) pulls the survival curve down, and a hazard decrease
+# (`β = -0.5`) lifts it above the base.
+
+reduced = modify(hazard_base, -β; link = log)
+ts = collect(range(0.0, 6.0; length = 300))
+survival_curves = (
+    t = vcat(ts, ts, ts),
+    survival = vcat(
+        ccdf.(hazard_base, ts), ccdf.(prop, ts), ccdf.(reduced, ts)),
+    dist = vcat(fill("base", length(ts)),
+        fill("hazard up (β = 0.5)", length(ts)),
+        fill("hazard down (β = -0.5)", length(ts)))
+)
+draw(
+    data(survival_curves) *
+    mapping(:t => "t", :survival => "Survival S(t)",
+        color = :dist => "Distribution") *
+    visual(Lines, linewidth = 2);
+    figure = (size = (600, 350),)
+)
 
 # The identity link gives additive hazards for a non-negative effect.
 # A constant extra hazard `β` accrues from the support minimum, so the modified

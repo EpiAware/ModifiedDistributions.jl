@@ -21,12 +21,19 @@
 # ### What might I need to know before starting
 #
 # This tutorial builds on the [Getting started](@ref getting-started) overview.
-# It uses only Distributions.jl and ModifiedDistributions.jl, so there is no
-# fitting package to install.
+# It uses Distributions.jl and ModifiedDistributions.jl, so there is no
+# fitting package to install, with CairoMakie and AlgebraOfGraphics for the
+# figure.
 
 # ## Packages used
+#
+# CairoMakie and AlgebraOfGraphics are used for plotting only.
 
 using ModifiedDistributions, Distributions
+using CairoMakie, AlgebraOfGraphics
+
+CairoMakie.activate!(type = "png", px_per_unit = 2)
+set_theme!(theme_latexfonts(); fontsize = 14)
 
 # ## The three weight call shapes
 #
@@ -160,20 +167,27 @@ surface = [grid_loglik(μ, σ_fixed) for μ in μ_grid]
 best = argmax(surface)
 (μ_hat = μ_grid[best], loglik = surface[best])
 
+# Plotting the surface over the grid shows the peak in context: the curve
+# rises to a single maximum (marked) and falls away on either side.
+
+surface_curve = (μ = collect(μ_grid), loglik = surface)
+peak_point = (μ = [μ_grid[best]], loglik = [surface[best]])
+draw(
+    data(surface_curve) *
+    mapping(:μ => "μ", :loglik => "Weighted log-likelihood") *
+    visual(Lines, linewidth = 2) +
+    data(peak_point) *
+    mapping(:μ => "μ", :loglik => "Weighted log-likelihood") *
+    visual(Scatter, markersize = 12, color = :black);
+    figure = (size = (600, 350),)
+)
+
 # The grid estimate matches the count-weighted sample mean, the closed-form
 # maximiser for a Normal mean, up to the grid spacing.
 # The two printed values agree to within half a grid step.
 
 weighted_mean = sum(tally .* observed) / sum(tally)
 (grid_estimate = μ_grid[best], weighted_mean = weighted_mean)
-
-# A short table of the surface near its peak shows the curvature the maximiser
-# sits in.
-
-for (μ, ll) in zip(μ_grid, surface)
-    3.6 <= μ <= 4.4 || continue
-    println(rpad(round(μ; digits = 2), 6), round(ll; digits = 3))
-end
 
 # ## Summary
 #
