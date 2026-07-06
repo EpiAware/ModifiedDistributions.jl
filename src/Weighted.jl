@@ -45,7 +45,7 @@ struct Weighted{D <: UnivariateDistribution, T <: Union{Real, Missing}} <:
             dist::D, weight::T) where {
             D <: UnivariateDistribution, T <: Union{Real, Missing}}
         if !ismissing(weight) && weight < 0
-            throw(ArgumentError("Weight must be non-negative"))
+            throw(ArgumentError("weight must be non-negative"))
         end
         new{D, T}(dist, weight)
     end
@@ -109,7 +109,7 @@ end
 Create a product distribution of weighted distributions, each with a different
 weight.
 
-A `Product` distribution of `Weighted` distributions suitable for vectorized
+A `Product` distribution of `Weighted` distributions suitable for vectorised
 observations.
 
 # Arguments
@@ -143,7 +143,7 @@ end
 Create a product distribution of weighted distributions, where each
 distribution has its own weight.
 
-A `Product` distribution of `Weighted` distributions suitable for vectorized
+A `Product` distribution of `Weighted` distributions suitable for vectorised
 observations with different distributions.
 
 # Examples
@@ -162,7 +162,7 @@ function weight(
     length(dists) == length(weights) ||
         throw(
             ArgumentError(
-            "Number of distributions must equal number of weights"
+            "number of distributions must equal number of weights"
         )
         )
     return product_distribution(
@@ -378,7 +378,7 @@ end
 
 @doc "
 
-Compute log-likelihood for single Weighted distribution with vectorized joint
+Compute log-likelihood for single Weighted distribution with vectorised joint
 observations.
 
 Handles joint observations as NamedTuple: `(values = [...], weights = [...])`.
