@@ -14,11 +14,11 @@
 # `ComposedDistributionsModifiedDistributionsExt`.
 #
 # Function owner: ModifiedDistributions (`affine` / `weight` / `thin` /
-# `cumulative` / `map_series`). Type owner: ComposedDistributions
+# `cumulative` / `series_transform`). Type owner: ComposedDistributions
 # (`Sequential`). The extension depends on both, so there is no piracy.
 module ModifiedDistributionsComposedDistributionsExt
 
-import ModifiedDistributions: affine, weight, thin, cumulative, map_series
+import ModifiedDistributions: affine, weight, thin, cumulative, series_transform
 using ComposedDistributions: Sequential, observed_distribution
 
 # An affine transform of the chain's observed total.
@@ -39,6 +39,6 @@ end
 thin(d::Sequential, p::Real) = thin(observed_distribution(d), p)
 thin(d::Sequential, ::Nothing) = d
 cumulative(d::Sequential) = cumulative(observed_distribution(d))
-map_series(d::Sequential, op) = map_series(observed_distribution(d), op)
+series_transform(d::Sequential, op) = series_transform(observed_distribution(d), op)
 
 end # module

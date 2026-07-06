@@ -22,9 +22,9 @@
     @test c.op isa ModifiedDistributions.CumulativeOp
     @test get_dist(c) === Gamma(2.0, 1.0)
 
-    # thin and cumulative are specialisations of the generic map_series
+    # thin and cumulative are specialisations of the generic series_transform
     # (public but not exported, so reached by qualified name).
-    g = ModifiedDistributions.map_series(Gamma(2.0, 1.0), s -> 2.0 .* s)
+    g = series_transform(Gamma(2.0, 1.0), s -> 2.0 .* s)
     @test g isa ModifiedDistributions.Transformed
     @test logpdf(g, 2.0) == logpdf(Gamma(2.0, 1.0), 2.0)
 end

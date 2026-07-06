@@ -35,7 +35,7 @@ Remember `Base.eltype` — without it, batch sampling `rand(rng, d, n)` falls ba
 ## Forward-transform ops
 
 A new forward op (alongside `ThinOp`/`CumulativeOp`) does not need a new wrapper type.
-Implement `_apply_op(op, series)` and, if the op has a displayable parameter, `_op_params(op)`; then construct it with `ModifiedDistributions.map_series(d, op)`.
+Implement `_apply_op(op, series)` and, if the op has a displayable parameter, `_op_params(op)`; then construct it with `series_transform(d, op)`.
 
 ## AD friendliness
 
