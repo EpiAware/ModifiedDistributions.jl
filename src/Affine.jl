@@ -22,7 +22,7 @@ distribution, so it works anywhere a distribution is expected.
 - [`affine`](@ref): constructor function
 """
 struct Affine{D <: UnivariateDistribution, T <: Real, S <: ValueSupport} <:
-       UnivariateDistribution{S}
+       AbstractModifiedDistribution{Univariate, S}
     "The inner distribution being transformed."
     dist::D
     "The positive multiplicative scale."
