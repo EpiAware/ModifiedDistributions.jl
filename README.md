@@ -54,6 +54,7 @@ Likewise `weight` replaces ad hoc `n * logpdf(d, x)` terms in model code with a 
 
 - [Distributions.jl](https://github.com/JuliaStats/Distributions.jl) supplies the distributions being modified.
 - [Turing.jl](https://github.com/TuringLang/Turing.jl) and other PPLs consume the wrappers directly, e.g. weighted likelihoods for aggregated data.
+- [ComposedDistributions.jl](https://github.com/EpiAware/ComposedDistributions.jl) composes distributions into chains; a package extension lets the modifier verbs apply across a chain's observed total.
 - [CensoredDistributions.jl](https://github.com/EpiAware/CensoredDistributions.jl) and the wider [EpiAware](https://github.com/EpiAware) ecosystem build censoring, convolution, and composition layers on top of these modifiers.
 
 ## Where to learn more
