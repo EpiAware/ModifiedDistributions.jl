@@ -36,8 +36,9 @@ import Distributions: params, insupport, pdf, logpdf, cdf, logcdf,
 # Base functions we extend that are re-exported by Distributions.
 import Base: minimum, maximum
 # Types and constructors we use without extension.
-using Distributions: Distributions, UnivariateDistribution, Continuous,
-                     Discrete, ValueSupport, Product, product_distribution
+using Distributions: Distributions, Distribution, UnivariateDistribution,
+                     VariateForm, Univariate, Continuous, Discrete,
+                     ValueSupport, Product, product_distribution
 
 # Register the standard EpiAware docstring conventions before any
 # docstrings are defined (see src/docstrings.jl).
@@ -57,11 +58,18 @@ export modify
 # The generic unwrap protocol owned by this package.
 export get_dist, get_dist_recursive
 
+# Abstract type hierarchy for the modifier leaves. Included first so every
+# concrete wrapper type can subtype `AbstractModifiedDistribution`.
+include("interface.jl")
+
 include("Affine.jl")
 include("Weighted.jl")
 include("Transformed.jl")
 include("Modified.jl")
 include("get_dist.jl")
+
+# Public interface-conformance harness (a public submodule).
+include("TestUtils.jl")
 
 # Public API - types that are part of the public interface but not exported.
 @static if VERSION >= v"1.11"

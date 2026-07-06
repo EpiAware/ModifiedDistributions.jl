@@ -46,7 +46,7 @@ with the generic [`transform`](@ref) or the specialised [`thin`](@ref) /
 - [`transform`](@ref), [`thin`](@ref), [`cumulative`](@ref): constructors
 "
 struct Transformed{D <: UnivariateDistribution, Op} <:
-       UnivariateDistribution{ValueSupport}
+       AbstractModifiedDistribution{Univariate, ValueSupport}
     "The inner distribution."
     dist::D
     "The forward op applied to a convolved series."
