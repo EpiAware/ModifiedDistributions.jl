@@ -1,10 +1,3 @@
-<!-- PACKAGE-OWNED — your benchmark narrative. scaffold writes this once and
-never overwrites it. The managed build splices this file verbatim into the
-generated `docs/src/benchmarks.md`, between the page heading and the rendered
-`## Performance history` section. ALL benchmark narrative lives here (the
-managed skeleton carries none): describe what the suite covers, how to run it,
-and how to read the history below. Add your own `## ...` subsections freely. -->
-
 `ModifiedDistributions` benchmarks each modifier's hot paths so wrapper overhead is visible and regressions are caught on every pull request.
 
 The suite (`benchmark/benchmarks.jl`) evaluates construction, `logpdf`, `pdf`, `cdf`/`ccdf`, `quantile` and `rand` for every modifier around the same base LogNormal, with the bare base as the shared baseline floor:
