@@ -25,7 +25,7 @@ ModifiedDistributions.jl/
 │   ├── docstrings.jl       # DocStringExtensions @template registration
 │   ├── Affine.jl           # affine modifier
 │   ├── Weighted.jl         # weight modifier
-│   ├── Transformed.jl      # transform / thin / cumulative
+│   ├── Transformed.jl      # series_transform / thin / cumulative
 │   ├── Modified.jl         # modify (hazard) modifier
 │   ├── get_dist.jl         # unwrap protocol
 │   └── public.jl           # public (non-exported) types

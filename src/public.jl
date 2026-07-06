@@ -1,11 +1,11 @@
 # Public API declarations for Julia 1.11+.
 #
 # Policy: the constructor verbs (`affine`, `weight`, `thin`/`cumulative`,
-# `modify`) are exported; the wrapper types and link machinery below are
-# public but not exported. This follows CensoredDistributions.jl's
-# sparse-surface precedent (CensoredDistributions#739/#717): the types are
-# needed for dispatch and documentation, not for construction, so they stay
-# off the export list.
+# `series_transform`, `modify`) are exported; the wrapper types and link
+# machinery below are public but not exported. This follows
+# CensoredDistributions.jl's sparse-surface precedent
+# (CensoredDistributions#739/#717): the types are needed for dispatch and
+# documentation, not for construction, so they stay off the export list.
 
 # The abstract modifier supertype (public but not exported): the dispatch
 # surface downstream packages subtype and key methods off, matching the

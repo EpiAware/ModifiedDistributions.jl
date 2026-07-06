@@ -50,9 +50,11 @@ include("docstrings.jl")
 export affine
 # `weight`: a likelihood weight applied to `logpdf`.
 export weight
-# Forward-series transforms (transparent to `logpdf`): `transform` is the
-# generic verb, `thin`/`cumulative` the specialisations.
-export transform, thin, cumulative
+# Forward-series transforms (transparent to `logpdf`): `series_transform` is
+# the generic verb, `thin`/`cumulative` the specialisations. Renamed from
+# `transform` to avoid the DataFrames.transform clash (#35); the distinctive
+# name keeps it safely exportable.
+export series_transform, thin, cumulative
 # `modify`: a hazard modification through a link (proportional or additive).
 export modify
 # The generic unwrap protocol owned by this package.

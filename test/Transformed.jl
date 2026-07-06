@@ -22,8 +22,8 @@
     @test c.op isa ModifiedDistributions.CumulativeOp
     @test get_dist(c) === Gamma(2.0, 1.0)
 
-    # thin and cumulative are specialisations of the generic transform.
-    g = transform(Gamma(2.0, 1.0), s -> 2.0 .* s)
+    # thin and cumulative are specialisations of the generic series_transform.
+    g = series_transform(Gamma(2.0, 1.0), s -> 2.0 .* s)
     @test g isa ModifiedDistributions.Transformed
     @test logpdf(g, 2.0) == logpdf(Gamma(2.0, 1.0), 2.0)
 end

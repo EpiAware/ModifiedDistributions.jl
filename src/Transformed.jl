@@ -8,7 +8,7 @@
 #
 # One node type, `Transformed`, carries an op. `thin` and `cumulative` are
 # specialised constructors over it with typed ops (so the factor stays
-# introspectable and validated); the generic `transform(d, f)` accepts any
+# introspectable and validated); the generic `series_transform(d, f)` accepts any
 # callable `series -> series` as an escape hatch.
 #
 # `thin` is mid-migration upstream to a `resolve` + `NoEvent` special case
@@ -39,11 +39,11 @@ _op_params(op) = ()
 A distribution carrying a forward-transform op, intended for a count series a
 downstream convolution layer produces. Transparent to `logpdf` and to every
 other distribution method (they delegate to the inner distribution). Construct
-with the generic [`transform`](@ref) or the specialised [`thin`](@ref) /
+with the generic [`series_transform`](@ref) or the specialised [`thin`](@ref) /
 [`cumulative`](@ref).
 
 # See also
-- [`transform`](@ref), [`thin`](@ref), [`cumulative`](@ref): constructors
+- [`series_transform`](@ref), [`thin`](@ref), [`cumulative`](@ref): constructors
 "
 struct Transformed{D <: UnivariateDistribution, Op} <:
        AbstractModifiedDistribution{Univariate, ValueSupport}
@@ -55,13 +55,14 @@ end
 
 @doc "
 
-Apply a forward-transform op to a distribution's convolved count series.
+Map a distribution's convolved count series through a forward op.
 
-`transform(d, op)` carries `op` (a [`thin`](@ref)/[`cumulative`](@ref) op or any
+`series_transform(d, op)` carries `op` (a [`thin`](@ref)/[`cumulative`](@ref) op or any
 callable `series -> series`) intended for the series a downstream convolution
 layer produces. Transparent to `logpdf`. Prefer [`thin`](@ref) /
-[`cumulative`](@ref) for the common cases; use `transform` for an arbitrary
-deterministic series map.
+[`cumulative`](@ref) for the common cases; use `series_transform` for an
+arbitrary deterministic series map. Renamed from `transform` so it cannot
+clash with `DataFrames.transform` (#35).
 
 # Arguments
 - `d`: the inner distribution.
@@ -71,20 +72,20 @@ deterministic series map.
 ```@example
 using ModifiedDistributions, Distributions
 
-d = transform(Gamma(2.0, 1.0), s -> 0.5 .* s)
+d = series_transform(Gamma(2.0, 1.0), s -> 0.5 .* s)
 logpdf(d, 2.0) == logpdf(Gamma(2.0, 1.0), 2.0)
 ```
 
 # See also
 - [`thin`](@ref), [`cumulative`](@ref): specialised forward transforms
 "
-transform(d::UnivariateDistribution, op) = Transformed(d, op)
+series_transform(d::UnivariateDistribution, op) = Transformed(d, op)
 
 @doc "
 
 Thin a distribution's forward count by a probability `p`.
 
-`thin(d, p)` is [`transform`](@ref) with a fixed factor `p ∈ [0, 1]` intended to
+`thin(d, p)` is [`series_transform`](@ref) with a fixed factor `p ∈ [0, 1]` intended to
 be multiplied into a downstream count series (e.g. ascertainment of cases, the
 infection fatality ratio for deaths). Transparent to `logpdf`. `thin(d, nothing)`
 returns `d` unchanged.
@@ -102,7 +103,7 @@ logpdf(d, 2.0) == logpdf(LogNormal(1.5, 0.5), 2.0)
 ```
 
 # See also
-- [`transform`](@ref): the generic forward transform
+- [`series_transform`](@ref): the generic forward transform
 - [`cumulative`](@ref): cumulative-sum a series
 "
 function thin(dist::UnivariateDistribution, p::Real)
@@ -133,7 +134,7 @@ logpdf(d, 2.0) == logpdf(Gamma(2.0, 1.0), 2.0)
 ```
 
 # See also
-- [`transform`](@ref): the generic forward transform
+- [`series_transform`](@ref): the generic forward transform
 - [`thin`](@ref): a fixed forward factor
 "
 cumulative(dist::UnivariateDistribution) = Transformed(dist, CumulativeOp())

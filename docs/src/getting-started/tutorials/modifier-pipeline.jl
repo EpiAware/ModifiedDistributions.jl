@@ -6,7 +6,7 @@
 # behaviour, and they stack.
 # This tutorial walks a delay distribution through the four verbs in turn:
 # an affine reparameterisation, the forward-series transforms
-# [`thin`](@ref) and [`cumulative`](@ref), the generic [`transform`](@ref)
+# [`thin`](@ref) and [`cumulative`](@ref), the generic [`series_transform`](@ref)
 # escape hatch, and a hazard [`modify`](@ref) with both supported links.
 # It closes with [`get_dist`](@ref) / [`get_dist_recursive`](@ref) unwrapping a
 # nested stack.
@@ -16,7 +16,7 @@
 # 1. Reparameterise a distribution with [`affine`](@ref).
 # 2. Attach [`thin`](@ref) and [`cumulative`](@ref) to a daily-count series and
 #    check they leave the distribution itself untouched.
-# 3. Use the generic [`transform`](@ref) for an arbitrary series map.
+# 3. Use the generic [`series_transform`](@ref) for an arbitrary series map.
 # 4. Modify a hazard through the `log` and `identity` links.
 # 5. Peel a nested stack back to its base distribution.
 #
@@ -114,13 +114,13 @@ cd = cumulative(delay)
 _, cum_ops = ModifiedDistributions._peel_forward(cd)
 ModifiedDistributions._apply_forward_ops(daily, cum_ops)
 
-# ## The generic transform escape hatch
+# ## The generic series_transform escape hatch
 #
-# [`transform`](@ref) accepts any callable `series -> series`, for the cases
+# [`series_transform`](@ref) accepts any callable `series -> series`, for the cases
 # `thin` and `cumulative` do not cover.
 # Here the op shifts every day up by one, as the printed series shows.
 
-shift_op = transform(delay, s -> s .+ 1.0)
+shift_op = series_transform(delay, s -> s .+ 1.0)
 _, shift_ops = ModifiedDistributions._peel_forward(shift_op)
 ModifiedDistributions._apply_forward_ops(daily, shift_ops)
 

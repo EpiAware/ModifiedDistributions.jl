@@ -68,7 +68,8 @@ td = thin(Gamma(2.0, 1.0), 0.3)
 (thinned = logpdf(td, 2.0), base = logpdf(Gamma(2.0, 1.0), 2.0))
 ```
 
-The generic [`transform`](@ref) accepts any callable `series -> series` as an escape hatch.
+The generic [`series_transform`](@ref) accepts any callable `series -> series` as an escape hatch.
+`thin` and `cumulative` cover the common cases; `series_transform` takes any callable `series -> series`.
 
 ## Hazard modification
 
