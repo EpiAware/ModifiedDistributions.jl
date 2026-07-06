@@ -54,7 +54,7 @@ end
 
 # Batched observation plumbing shared by the modifier leaves.
 #
-# Whether `dist` provides a specialised, value-identical batched method
+# Whether `dist` provides a specialised batched method
 # `f(dist, ::AbstractVector{<:Real})` worth a single vectorised call. No
 # plain distribution does (Distributions' array evaluations are deprecated
 # per-point maps); a downstream package adds hooks for a type that caches
@@ -68,7 +68,9 @@ _has_batched_method(::typeof(logpdf), dist) = _has_batched_logpdf(dist)
 # Evaluate `f` over a whole batch through a wrapped distribution: one
 # batched call when the distribution declares a specialised method,
 # otherwise a per-point scalar map (never Distributions' deprecated array
-# fallbacks). Both branches are value-identical, and the branch is on the
+# fallbacks). Both branches agree up to the inner distribution's own
+# batched-versus-scalar evaluation tolerance (a numeric-quadrature inner
+# may share one grid across a batch), and the branch is on the
 # wrapped distribution's type, never on a sampled value, so it is AD-safe.
 function _batched_eval(f, dist, xs::AbstractVector{<:Real})
     _has_batched_method(f, dist) || return map(Base.Fix1(f, dist), xs)

@@ -126,10 +126,10 @@ end
     @test mean(samples_d) ≈ mean(samples_wd) atol=0.1
     @test std(samples_d) ≈ std(samples_wd) atol=0.1
 
-    # sampler delegates but keeps the weight
+    # sampler delegates to the base sampler; the weight never touches
+    # sampling, and re-wrapping crashed for sampler-object bases.
     s = sampler(wd)
-    @test s isa ModifiedDistributions.Weighted
-    @test s.weight == w
+    @test s === sampler(d)
 end
 
 @testitem "Weighted with different numeric types" begin
@@ -629,4 +629,19 @@ end
     logpdf(wd, [1.9, 2.1, 2.3])
     @test spy.nscalar[] == 0
     @test spy.nvector[] == 1
+end
+
+@testitem "batch sampling uses the base sampler" begin
+    using Distributions, Random
+
+    # Gamma and Poisson have dedicated sampler objects; re-wrapping them
+    # in Weighted crashed batch rand (pre-release review finding).
+    rng = MersenneTwister(7)
+    draws_gamma = rand(rng, weight(Gamma(2.0, 3.0), 3.0), 4)
+    draws_pois = rand(rng, weight(Poisson(4.0), 2.0), 4)
+    (gamma = draws_gamma, poisson = draws_pois)
+    @test length(draws_gamma) == 4
+    @test all(>(0), draws_gamma)
+    @test length(draws_pois) == 4
+    @test all(>=(0), draws_pois)
 end

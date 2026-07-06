@@ -340,7 +340,7 @@ function _weighted_base_logpdfs(components, values)
     return logpdf(shared, collect(values))
 end
 
-# Whether a distribution provides a specialised, value-identical batched
+# Whether a distribution provides a specialised batched
 # `logpdf(d, ::AbstractVector{<:Real})` worth a single vectorised call. No plain
 # distribution does; a downstream package may add a method for a type that
 # caches shared work across a batch of observations. Also feeds the modifier
@@ -513,7 +513,11 @@ Create a sampler for efficient sampling (delegates to underlying distribution).
 
 See also: [`rand`](@ref)
 "
-sampler(d::Weighted) = Weighted(sampler(get_dist(d)), d.weight)
+# The weight never touches sampling, so batch sampling uses the base
+# distribution's specialised sampler directly. Re-wrapping it in `Weighted`
+# would crash for bases whose sampler is a dedicated sampler object rather
+# than a distribution (Gamma, Poisson).
+sampler(d::Weighted) = sampler(get_dist(d))
 
 # Helper functions for observation and weight processing.
 
