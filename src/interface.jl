@@ -51,3 +51,26 @@ _modified_inner(d::AbstractModifiedDistribution) = d.dist
 function Base.show(io::IO, d::AbstractModifiedDistribution)
     print(io, nameof(typeof(d)), "(", _modified_inner(d), ")")
 end
+
+# Batched observation plumbing shared by the modifier leaves.
+#
+# Whether `dist` provides a specialised, value-identical batched method
+# `f(dist, ::AbstractVector{<:Real})` worth a single vectorised call. No
+# plain distribution does (Distributions' array evaluations are deprecated
+# per-point maps); a downstream package adds hooks for a type that caches
+# shared work across a batch of observations, e.g. a convolved
+# distribution's single-solve batched quadrature. The `logpdf` case defers
+# to `_has_batched_logpdf` (see Weighted.jl), the trait such a package
+# already opts into for the Product{Weighted} fast path.
+_has_batched_method(f, dist) = false
+_has_batched_method(::typeof(logpdf), dist) = _has_batched_logpdf(dist)
+
+# Evaluate `f` over a whole batch through a wrapped distribution: one
+# batched call when the distribution declares a specialised method,
+# otherwise a per-point scalar map (never Distributions' deprecated array
+# fallbacks). Both branches are value-identical, and the branch is on the
+# wrapped distribution's type, never on a sampled value, so it is AD-safe.
+function _batched_eval(f, dist, xs::AbstractVector{<:Real})
+    _has_batched_method(f, dist) || return map(Base.Fix1(f, dist), xs)
+    return f(dist, xs)
+end

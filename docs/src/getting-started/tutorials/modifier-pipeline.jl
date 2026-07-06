@@ -196,7 +196,7 @@ get_dist_recursive(stack)
 #
 # - [`affine`](@ref) reparameterises any univariate distribution by exact change
 #   of variables.
-# - [`thin`](@ref), [`cumulative`](@ref) and [`transform`](@ref) stay
+# - [`thin`](@ref), [`cumulative`](@ref) and [`series_transform`](@ref) stay
 #   transparent to every distribution method and act only on a downstream
 #   series.
 # - [`modify`](@ref) scales a survival curve (`log` link) or adds a constant

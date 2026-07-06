@@ -245,15 +245,20 @@ function pdf(d::Weighted, x::Real)
     return pdf(get_dist(d), x)
 end
 
-# Weighted logpdf computation with validation. Missing or zero weights
-# short-circuit to `-Inf`, seeding the sentinel from the promoted
+# The `-Inf` sentinel for a missing or zero weight, seeded from the promoted
 # weight/distribution type so ForwardDiff Duals survive the zero-weight branch
 # without evaluating the underlying logpdf.
+function _weight_sentinel(dist, weight)
+    wtype = ismissing(weight) ? Bool : typeof(weight)
+    T = float(promote_type(wtype, eltype(dist)))
+    return oftype(zero(T), -Inf)
+end
+
+# Weighted logpdf computation with validation. Missing or zero weights
+# short-circuit to the `-Inf` sentinel.
 function _logpdf(dist, value, weight)
     if ismissing(weight) || weight == 0
-        wtype = ismissing(weight) ? Bool : typeof(weight)
-        T = float(promote_type(wtype, eltype(dist)))
-        return oftype(zero(T), -Inf)
+        return _weight_sentinel(dist, weight)
     end
     return weight * logpdf(dist, value)
 end
@@ -266,6 +271,27 @@ See also: [`pdf`](@ref)
 "
 function logpdf(d::Weighted, x::Real)
     return _logpdf(get_dist(d), x, d.weight)
+end
+
+@doc "
+
+Return the weighted log-probability for a vector of observations, per point.
+
+The whole batch reaches the base distribution in one `logpdf` call when it
+provides a batched implementation, then the weight applies elementwise with
+the scalar missing/zero-weight sentinel semantics (`-Inf` per point,
+AD-safe promoted eltype). A vector observation on a single `Weighted` is
+per-point (a vector result), unlike the `Product{<:Weighted}` joint-scalar
+convention.
+
+See also: [`pdf`](@ref)
+"
+function logpdf(d::Weighted, x::AbstractVector{<:Real})
+    w = d.weight
+    if ismissing(w) || w == 0
+        return fill(_weight_sentinel(get_dist(d), w), length(x))
+    end
+    return w .* _batched_eval(logpdf, get_dist(d), x)
 end
 
 @doc "
@@ -317,7 +343,9 @@ end
 # Whether a distribution provides a specialised, value-identical batched
 # `logpdf(d, ::AbstractVector{<:Real})` worth a single vectorised call. No plain
 # distribution does; a downstream package may add a method for a type that
-# caches shared work across a batch of observations.
+# caches shared work across a batch of observations. Also feeds the modifier
+# leaves' batched observation methods through `_has_batched_method` /
+# `_batched_eval` (see interface.jl).
 _has_batched_logpdf(::UnivariateDistribution) = false
 
 # The single underlying distribution shared by every `Weighted` component, or

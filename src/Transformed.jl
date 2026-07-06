@@ -88,7 +88,8 @@ Thin a distribution's forward count by a probability `p`.
 `thin(d, p)` is [`series_transform`](@ref) with a fixed factor `p ∈ [0, 1]` intended to
 be multiplied into a downstream count series (e.g. ascertainment of cases, the
 infection fatality ratio for deaths). Transparent to `logpdf`. `thin(d, nothing)`
-returns `d` unchanged.
+returns `d` unchanged. Under the ConvolvedDistributions extension the carried
+op applies to the convolved count series.
 
 # Arguments
 - `d`: the inner distribution.
@@ -118,9 +119,11 @@ thin(dist::UnivariateDistribution, ::Nothing) = dist
 
 Accumulate a distribution's forward count series.
 
-`cumulative(d)` is [`transform`](@ref) with a running-sum op intended for a
-downstream count series, giving cumulative counts (cumulative incidence,
-cumulative deaths). Transparent to `logpdf`.
+`cumulative(d)` is [`series_transform`](@ref) with a running-sum op intended
+for a downstream count series, giving cumulative counts (cumulative
+incidence, cumulative deaths). Transparent to `logpdf`. Under the
+ConvolvedDistributions extension the carried op applies to the convolved
+count series.
 
 # Arguments
 - `d`: the inner distribution.
@@ -148,6 +151,18 @@ end
 
 for f in (:pdf, :logpdf, :cdf, :logcdf, :ccdf, :logccdf, :quantile)
     @eval Distributions.$f(d::Transformed, x::Real) = Distributions.$f(d.dist, x)
+end
+
+# Batched observations delegate the whole vector to the inner distribution
+# in one call when it declares a specialised batched method (e.g. a
+# convolved distribution's single-solve quadrature), and map the scalar call
+# otherwise (see `_batched_eval`). A vector observation on a modifier is
+# per-point (the result is a vector), unlike the Product{Weighted}
+# joint-scalar convention.
+for f in (:pdf, :logpdf, :cdf, :logcdf, :ccdf, :logccdf)
+    @eval function Distributions.$f(d::Transformed, x::AbstractVector{<:Real})
+        return _batched_eval(Distributions.$f, d.dist, x)
+    end
 end
 
 Distributions.insupport(d::Transformed, x::Real) = insupport(d.dist, x)

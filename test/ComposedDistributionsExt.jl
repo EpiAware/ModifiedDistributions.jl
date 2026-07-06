@@ -87,3 +87,46 @@ end
     @test get_dist(th) === r
     @test logpdf(th, x) == logpdf(r, x)
 end
+
+@testitem "Composed extension: modify collapses a Sequential chain" begin
+    using Distributions
+    using ComposedDistributions
+
+    seq = sequential(:onset_admit => Gamma(2.0, 1.0),
+        :admit_death => LogNormal(0.5, 0.4))
+    obs = observed_distribution(seq)
+    x = 3.0
+
+    # modify: the observed total carries the hazard modification.
+    md = modify(seq, -log(2.0))
+    @test md isa ModifiedDistributions.Modified
+    @test logpdf(md, x) ≈ logpdf(modify(obs, -log(2.0)), x)
+    @test ccdf(md, x) ≈ ccdf(modify(obs, -log(2.0)), x)
+
+    # The link keyword threads through to the collapsed form.
+    mi = modify(seq, 0.2; link = identity)
+    @test mi isa ModifiedDistributions.Modified
+    @test logpdf(mi, x) ≈ logpdf(modify(obs, 0.2; link = identity), x)
+
+    # nothing threads through unchanged, mirroring weight/thin.
+    @test modify(seq, nothing) === seq
+end
+
+@testitem "Composed extension: batched scoring through a modified chain" begin
+    using Distributions
+    using ComposedDistributions
+
+    seq = sequential(:onset_admit => Gamma(2.0, 1.0),
+        :admit_death => LogNormal(0.5, 0.4))
+    xs = [2.0, 3.0, 4.5]
+
+    # A vector observation on a modified chain scores per point, delegating
+    # the whole batch to the collapsed observed distribution in one call, and
+    # matches the scalar map within quadrature tolerance (the batched
+    # single-solve grid differs slightly from per-point solves in the tail).
+    ad = affine(seq; scale = 2.0, shift = 1.0)
+    batched = logpdf(ad, xs)
+    @test batched isa AbstractVector
+    @test length(batched) == 3
+    @test isapprox(batched, map(x -> logpdf(ad, x), xs); rtol = 1e-3)
+end
