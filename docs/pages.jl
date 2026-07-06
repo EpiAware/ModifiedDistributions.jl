@@ -17,8 +17,7 @@ pages = [
             "Modifiers across composed chains" => "getting-started/tutorials/composed-chains.md"
         ],
         "Julia" => "getting-started/julia.md",
-        "FAQ" => "getting-started/faq.md",
-        "Infrastructure and template sync" => "getting-started/infrastructure.md"
+        "FAQ" => "getting-started/faq.md"
     ],
     "API reference" => [
         "Public API" => "lib/public.md",
@@ -30,7 +29,10 @@ pages = [
         "Contributing" => "developer/contributing.md",
         "Writing a new modifier" => "developer/extending.md",
         "Release process" => "developer/release-process.md",
-        "Developer FAQ" => "developer/faq.md"
+        "Developer FAQ" => "developer/faq.md",
+        # Maintainer-facing template-sync notes; the file stays under
+        # `getting-started/` on disk so inbound links keep resolving.
+        "Infrastructure and template sync" => "getting-started/infrastructure.md"
     ],
     "Release notes" => "release-notes.md"
 ]

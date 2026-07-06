@@ -59,6 +59,11 @@ Create a weighted distribution where the log-probability is scaled by `w`.
 
 A `Weighted` distribution will contribute `w * logpdf(dist, x)` to the
 log-probability when evaluating `logpdf(weighted_dist, x)`.
+Unlike an ad hoc `w * logpdf(dist, x)` term in model code, the result is
+still a real distribution whose sampling delegates to `dist`, so a
+Turing.jl model (or any PPL built on Distributions.jl) that uses it stays a
+complete generative model with working prior and posterior-predictive
+simulation.
 
 # Examples
 ```@example

@@ -2,16 +2,17 @@
 
 ## How do I create a modified distribution?
 
-Each modifier is a plain function taking a distribution and returning a distribution:
+Each modifier is a plain function taking a distribution and returning a distribution.
+The printed result below shows each wrapper displaying the distribution it wraps:
 
 ```@example faq
 using ModifiedDistributions, Distributions
 
-affine(LogNormal(1.5, 0.5); scale = 2.0, shift = 1.0)
-weight(Normal(2.0, 1.0), 10.0)
-thin(Gamma(2.0, 1.0), 0.3)
-cumulative(Gamma(2.0, 1.0))
-modify(Weibull(1.5, 2.0), 0.5)
+[affine(LogNormal(1.5, 0.5); scale = 2.0, shift = 1.0),
+    weight(Normal(2.0, 1.0), 10.0),
+    thin(Gamma(2.0, 1.0), 0.3),
+    cumulative(Gamma(2.0, 1.0)),
+    modify(Weibull(1.5, 2.0), 0.5)]
 ```
 
 ## What are the three weight scenarios for `weight`?
@@ -21,6 +22,9 @@ modify(Weibull(1.5, 2.0), 0.5)
 3. Vectorised weights: `weight(d, [3, 1, 4])` builds a `Product` of weighted components for vector observations.
 
 Constructor and observation weights combine by multiplication when both are present.
+
+In every form the result is still a real Distributions.jl distribution, unlike an ad hoc `n * logpdf(d, x)` term or Turing.jl's `@addlogprob!`.
+Sampling delegates to the base while only the likelihood contribution is scaled, so a Turing.jl model (or any PPL built on Distributions.jl) that uses a weighted distribution stays a complete generative model — prior simulation and posterior-predictive draws keep working.
 
 ## Why does a zero or missing weight give `-Inf` rather than `NaN`?
 

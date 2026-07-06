@@ -10,38 +10,51 @@
 | [![cov ForwardDiff](https://codecov.io/gh/EpiAware/ModifiedDistributions.jl/graph/badge.svg?flag=ad-forwarddiff)](https://app.codecov.io/gh/EpiAware/ModifiedDistributions.jl?flags%5B0%5D=ad-forwarddiff) | [![cov ReverseDiff](https://codecov.io/gh/EpiAware/ModifiedDistributions.jl/graph/badge.svg?flag=ad-reversediff)](https://app.codecov.io/gh/EpiAware/ModifiedDistributions.jl?flags%5B0%5D=ad-reversediff) | [![cov Enzyme forward](https://codecov.io/gh/EpiAware/ModifiedDistributions.jl/graph/badge.svg?flag=ad-enzyme-forward)](https://app.codecov.io/gh/EpiAware/ModifiedDistributions.jl?flags%5B0%5D=ad-enzyme-forward) | [![cov Enzyme reverse](https://codecov.io/gh/EpiAware/ModifiedDistributions.jl/graph/badge.svg?flag=ad-enzyme-reverse)](https://app.codecov.io/gh/EpiAware/ModifiedDistributions.jl?flags%5B0%5D=ad-enzyme-reverse) | [![cov Mooncake reverse](https://codecov.io/gh/EpiAware/ModifiedDistributions.jl/graph/badge.svg?flag=ad-mooncake-reverse)](https://app.codecov.io/gh/EpiAware/ModifiedDistributions.jl?flags%5B0%5D=ad-mooncake-reverse) | [![cov Mooncake forward](https://codecov.io/gh/EpiAware/ModifiedDistributions.jl/graph/badge.svg?flag=ad-mooncake-forward)](https://app.codecov.io/gh/EpiAware/ModifiedDistributions.jl?flags%5B0%5D=ad-mooncake-forward) |
 <!-- badges:end -->
 
-Composable unary modifiers for [Distributions.jl](https://github.com/JuliaStats/Distributions.jl) univariate distributions: affine transforms, likelihood weights, hazard modification, and forward-series transforms, plus the generic `get_dist` unwrap protocol.
+Wrappers for [Distributions.jl](https://github.com/JuliaStats/Distributions.jl) univariate distributions that each change one behaviour — rescaling, likelihood weighting, hazard modification, or a forward transform — while everything else keeps working, plus the generic `get_dist` unwrap protocol.
 
 ## Why ModifiedDistributions?
 
-- **Affine transforms**: `affine(dist; scale, shift)` gives the exact change-of-variables distribution of `Y = scale * X + shift`, supporting the full distribution interface (`logpdf`, `cdf`, `quantile`, sampling, and summary statistics).
-- **Likelihood weights**: `weight(dist, w)` scales `logpdf` by a weight — ideal for aggregated or count observations — with vectorised `Product` forms and observation-time weights via `(value = x, weight = w)` named tuples.
-- **Hazard modification**: `modify(dist, effect)` transforms a distribution's hazard function through a link — proportional hazards by default, additive hazards via `link = identity` — in closed form.
-- **Forward-series transforms**: `thin(dist, p)`, `cumulative(dist)`, and the generic `transform(dist, f)` carry deterministic operations for a downstream count series while staying transparent to `logpdf`.
-- **Generic unwrap protocol**: `get_dist` and `get_dist_recursive` extract the underlying distribution from any wrapper, and downstream packages can extend them for their own wrappers.
-- **AD-friendly**: tested in CI against ForwardDiff, ReverseDiff, Enzyme, and Mooncake.
+- **Rescale and shift** — exact `affine` transforms of any univariate distribution, with the full distribution interface intact.
+- **Weight likelihoods** — scale an observation's contribution with `weight` while the result stays a real, samplable distribution, so a Turing.jl model (or any PPL built on Distributions.jl) remains a complete generative model.
+- **Modify hazards** — proportional or additive hazard changes with `modify`, in closed form.
+- **Forward transforms** — carry thinning or accumulation for a downstream count series without touching the distribution itself.
+- **Unwrap anywhere** — recover the distribution underneath any wrapper with `get_dist`.
+- **Works with composed chains** — modifiers apply across ComposedDistributions.jl chains.
+- **AD-ready** — tested in CI against ForwardDiff, ReverseDiff, Enzyme, and Mooncake.
 
 ## Getting started
 
 See [documentation](https://modifieddistributions.epiaware.org/stable/) for a full walkthrough.
 
+An affine transform gives the exact distribution of `Y = 2X + 1`, and the whole distribution interface follows:
+
 ```julia
 using ModifiedDistributions, Distributions
 
-# An affine transform Y = 2X + 1 of a LogNormal.
 d = affine(LogNormal(1.5, 0.5); scale = 2.0, shift = 1.0)
-logpdf(d, 5.0)
+(mean = mean(d), logpdf = logpdf(d, 5.0), median = quantile(d, 0.5))
+```
 
-# Weight the log-likelihood contribution of an observation seen 10 times.
+Weighting scales the log-likelihood contribution of an observation seen 10 times.
+The two numbers printed below match, showing the weighted log-density is exactly 10 times the base:
+
+```julia
 wd = weight(d, 10.0)
-logpdf(wd, 5.0) ≈ 10.0 * logpdf(d, 5.0)
+(weighted = logpdf(wd, 5.0), manual = 10.0 * logpdf(d, 5.0))
+```
 
-# Halve the hazard of a delay distribution (proportional hazards).
+Hazard modification works in closed form.
+Halving the hazard raises the survival function to the power one half, and the two printed values agree:
+
+```julia
 md = modify(LogNormal(1.5, 0.5), -log(2.0))
-ccdf(md, 2.0) ≈ ccdf(LogNormal(1.5, 0.5), 2.0)^0.5
+(modified = ccdf(md, 2.0), base_sqrt = ccdf(LogNormal(1.5, 0.5), 2.0)^0.5)
+```
 
-# Unwrap back to the inner distribution.
-get_dist(wd) === d
+Unwrapping the weighted distribution returns the affine transform underneath:
+
+```julia
+get_dist(wd)
 ```
 
 ## Relationship to Distributions.jl
