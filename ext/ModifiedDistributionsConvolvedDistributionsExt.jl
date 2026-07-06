@@ -40,6 +40,9 @@ using ConvolvedDistributions: _primal
 using ModifiedDistributions: Affine, Modified, Transformed, Weighted,
                              _peel_forward, _apply_forward_ops, _log1mexp,
                              _LogModified, _IdentityModified
+import ModifiedDistributions: _has_batched_logpdf, _has_batched_method
+using ConvolvedDistributions: Convolved
+using Distributions: pdf, cdf
 
 # --- 1. The series handshake -----------------------------------------------
 
@@ -110,5 +113,16 @@ end
 _ccdf_ad_safe(d::Modified, x::Real) = exp(_logccdf_ad_safe(d, x))
 _cdf_ad_safe(d::Modified, x::Real) = -expm1(_logccdf_ad_safe(d, x))
 _logcdf_ad_safe(d::Modified, x::Real) = _log1mexp(_logccdf_ad_safe(d, x))
+
+# --- 4. Batched-evaluation traits --------------------------------------------
+
+# A `Convolved` provides specialised whole-batch `logpdf`, `pdf` and `cdf`
+# (one quadrature solve for the batch), so a modifier wrapping one should
+# delegate vector observations in a single call rather than a scalar map.
+# The remaining cdf-family functions have no batched `Convolved` methods, so
+# they keep the default scalar-map path.
+_has_batched_logpdf(::Convolved) = true
+_has_batched_method(::typeof(pdf), ::Convolved) = true
+_has_batched_method(::typeof(cdf), ::Convolved) = true
 
 end # module

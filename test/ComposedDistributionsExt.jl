@@ -29,8 +29,11 @@
     # Per-observation weights build a Product over the observed total.
     wv = weight(seq, [2.0, 3.0])
     @test wv isa Product
+    # The shared observed total now routes through Convolved's batched
+    # quadrature (one grid for the batch), so allow the ~1e-4 relative
+    # difference from per-point solves.
     @test logpdf(wv, [x, x + 0.5]) ≈
-          2.0 * logpdf(obs, x) + 3.0 * logpdf(obs, x + 0.5)
+          2.0 * logpdf(obs, x) + 3.0 * logpdf(obs, x + 0.5) rtol = 1e-3
 
     # nothing threads through unchanged, mirroring the univariate forms.
     @test weight(seq, nothing) === seq

@@ -230,3 +230,24 @@ end
     @test all(isfinite, g4)
     @test g4 ≈ fdgrad(f4, [2.0, 1.0, 0.4]) rtol=1e-4
 end
+
+@testitem "batched-evaluation traits for Convolved" begin
+    using Distributions
+    using ConvolvedDistributions
+
+    conv = convolve_distributions(Gamma(2.0, 1.0), LogNormal(0.3, 0.4))
+    # The traits route whole-batch evaluation of a wrapped Convolved
+    # through its single-solve quadrature methods.
+    @test ModifiedDistributions._has_batched_logpdf(conv)
+    @test ModifiedDistributions._has_batched_method(Distributions.pdf, conv)
+    @test ModifiedDistributions._has_batched_method(Distributions.cdf, conv)
+    @test !ModifiedDistributions._has_batched_method(
+        Distributions.logccdf, conv)
+
+    # Batched scoring through a modifier matches the scalar map.
+    xs = [1.0, 2.5, 4.0]
+    d = affine(conv; scale = 2.0)
+    # The batched quadrature shares one grid across the batch, so values
+    # differ from per-point solves at ~1e-4 relative.
+    @test logpdf(d, xs) ≈ map(x -> logpdf(d, x), xs) rtol = 1e-3
+end
