@@ -10,11 +10,13 @@ pages = [
     # as the package grows.
     "Getting started" => [
         "Overview" => "getting-started/index.md",
+        "Installation" => "getting-started/installation.md",
         "Tutorials" => [
             "Weighted likelihoods" => "getting-started/tutorials/weighted-likelihoods.md",
             "A modifier pipeline" => "getting-started/tutorials/modifier-pipeline.md",
             "Modifiers across composed chains" => "getting-started/tutorials/composed-chains.md"
         ],
+        "Julia" => "getting-started/julia.md",
         "FAQ" => "getting-started/faq.md",
         "Infrastructure and template sync" => "getting-started/infrastructure.md"
     ],
@@ -24,7 +26,11 @@ pages = [
     ],
     "Benchmarks" => "benchmarks.md",
     "Development" => [
-        "Writing a new modifier" => "developer/extending.md"
+        "Overview" => "developer/index.md",
+        "Contributing" => "developer/contributing.md",
+        "Writing a new modifier" => "developer/extending.md",
+        "Release process" => "developer/release-process.md",
+        "Developer FAQ" => "developer/faq.md"
     ],
     "Release notes" => "release-notes.md"
 ]
