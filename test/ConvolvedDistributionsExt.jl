@@ -239,6 +239,8 @@ end
     # The traits route whole-batch evaluation of a wrapped Convolved
     # through its single-solve quadrature methods.
     @test ModifiedDistributions._has_batched_logpdf(conv)
+    @test ModifiedDistributions._has_batched_method(
+        Distributions.logpdf, conv)
     @test ModifiedDistributions._has_batched_method(Distributions.pdf, conv)
     @test ModifiedDistributions._has_batched_method(Distributions.cdf, conv)
     @test !ModifiedDistributions._has_batched_method(
@@ -250,4 +252,28 @@ end
     # The batched quadrature shares one grid across the batch, so values
     # differ from per-point solves at ~1e-4 relative.
     @test logpdf(d, xs) ≈ map(x -> logpdf(d, x), xs) rtol = 1e-3
+end
+
+@testitem "buried forward ops are rejected, outermost ops work" begin
+    using Distributions
+    using ConvolvedDistributions
+
+    delay = Gamma(2.0, 1.0)
+    series = [0.0, 5.0, 12.0, 20.0, 15.0]
+
+    # A forward op wrapped inside another modifier cannot reach the series
+    # convolution; silently dropping it produced wrong counts before the
+    # guard (PR #41 review finding).
+    @test_throws ArgumentError convolve_distributions(
+        weight(cumulative(delay), 3.0), series)
+    @test_throws ArgumentError convolve_distributions(
+        affine(thin(delay, 0.3); scale = 2.0), series)
+
+    # Outermost ops peel correctly even over a modified inner delay: the
+    # weight only touches logpdf, so the convolved counts match the
+    # unweighted inner delay's, accumulated.
+    baseline = convolve_distributions(delay, series)
+    counts = convolve_distributions(cumulative(weight(delay, 3.0)), series)
+    (accumulated = counts, expected = cumsum(baseline))
+    @test counts ≈ cumsum(baseline)
 end

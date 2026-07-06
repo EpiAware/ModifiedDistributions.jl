@@ -346,7 +346,7 @@ end
 # caches shared work across a batch of observations. Also feeds the modifier
 # leaves' batched observation methods through `_has_batched_method` /
 # `_batched_eval` (see interface.jl).
-_has_batched_logpdf(::UnivariateDistribution) = false
+_has_batched_logpdf(d::UnivariateDistribution) = _has_batched_method(logpdf, d)
 
 # The single underlying distribution shared by every `Weighted` component, or
 # `nothing` when they are not all the same object. Identity (`===`) keeps the
@@ -487,6 +487,15 @@ See also: [`logcdf`](@ref)
 "
 function logccdf(d::Weighted, x::Real)
     return logccdf(get_dist(d), x)
+end
+
+# Vector observations delegate the whole batch to the base distribution
+# (the weight only touches `logpdf`), taking a single batched call when
+# the base provides one. Per-point results, unlike Product{<:Weighted}.
+for f in (:pdf, :cdf, :logcdf, :ccdf, :logccdf)
+    @eval function Distributions.$f(d::Weighted, x::AbstractVector{<:Real})
+        return _batched_eval(Distributions.$f, get_dist(d), x)
+    end
 end
 
 @doc "

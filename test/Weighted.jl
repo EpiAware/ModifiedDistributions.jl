@@ -622,7 +622,10 @@ end
         d.nvector[] += 1
         return map(Base.Fix1(logpdf, d.dist), x)
     end
-    ModifiedDistributions._has_batched_logpdf(::SpyDist) = true
+    function ModifiedDistributions._has_batched_method(
+            ::typeof(Distributions.logpdf), ::SpyDist)
+        return true
+    end
 
     spy = SpyDist()
     wd = weight(spy, 2.0)

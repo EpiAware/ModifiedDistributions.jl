@@ -156,7 +156,10 @@ end
             return map(Base.Fix1(Distributions.$f, d.dist), x)
         end
     end
-    ModifiedDistributions._has_batched_logpdf(::SpyDist) = true
+    function ModifiedDistributions._has_batched_method(
+            ::typeof(Distributions.logpdf), ::SpyDist)
+        return true
+    end
     for f in (:pdf, :cdf, :logcdf, :ccdf, :logccdf)
         @eval function ModifiedDistributions._has_batched_method(
                 ::typeof(Distributions.$f), ::SpyDist)

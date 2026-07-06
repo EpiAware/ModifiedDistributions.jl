@@ -60,10 +60,10 @@ end
 # per-point maps); a downstream package adds hooks for a type that caches
 # shared work across a batch of observations, e.g. a convolved
 # distribution's single-solve batched quadrature. The `logpdf` case defers
-# to `_has_batched_logpdf` (see Weighted.jl), the trait such a package
+# to `_has_batched_method` (the single batched-evaluation trait; the
+# legacy `_has_batched_logpdf` in Weighted.jl aliases it), which a package
 # already opts into for the Product{Weighted} fast path.
 _has_batched_method(f, dist) = false
-_has_batched_method(::typeof(logpdf), dist) = _has_batched_logpdf(dist)
 
 # Evaluate `f` over a whole batch through a wrapped distribution: one
 # batched call when the distribution declares a specialised method,

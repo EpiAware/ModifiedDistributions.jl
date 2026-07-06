@@ -37,12 +37,13 @@ import ConvolvedDistributions: convolve_distributions, _primal_distribution,
                                _cdf_ad_safe, _ccdf_ad_safe, _logcdf_ad_safe,
                                _logccdf_ad_safe
 using ConvolvedDistributions: _primal
-using ModifiedDistributions: Affine, Modified, Transformed, Weighted,
+using ModifiedDistributions: AbstractModifiedDistribution, Affine, Modified,
+                             Transformed, Weighted, get_dist,
                              _peel_forward, _apply_forward_ops, _log1mexp,
                              _LogModified, _IdentityModified
-import ModifiedDistributions: _has_batched_logpdf, _has_batched_method
+import ModifiedDistributions: _has_batched_method
 using ConvolvedDistributions: Convolved
-using Distributions: pdf, cdf
+using Distributions: Distributions, pdf, cdf
 
 # --- 1. The series handshake -----------------------------------------------
 
@@ -55,8 +56,38 @@ function convolve_distributions(
         delay::Transformed, series::AbstractVector{<:Real};
         interval = 1)
     inner, ops = _peel_forward(delay)
+    _check_no_buried_forward_op(inner)
     counts = convolve_distributions(inner, series; interval)
     return _apply_forward_ops(counts, ops)
+end
+
+# A forward op buried under another modifier (e.g. weight(cumulative(d)))
+# cannot be peeled without a generic rewrap protocol, and silently
+# convolving the wrapper would drop the op. Reject with guidance: forward
+# ops go outermost.
+function convolve_distributions(
+        delay::AbstractModifiedDistribution, series::AbstractVector{<:Real};
+        interval = 1)
+    _check_no_buried_forward_op(delay)
+    return invoke(convolve_distributions,
+        Tuple{Distributions.UnivariateDistribution,
+            AbstractVector{<:Real}},
+        delay, series; interval)
+end
+
+function _check_no_buried_forward_op(d)
+    inner = d
+    while inner isa AbstractModifiedDistribution
+        inner isa Transformed &&
+            throw(ArgumentError(
+                "a forward op (thin/cumulative/series_transform) is " *
+                "wrapped inside another modifier, where the series " *
+                "convolution cannot apply it; apply forward ops " *
+                "outermost, e.g. thin(weight(d, w), p) rather than " *
+                "weight(thin(d, p), w)"))
+        inner = get_dist(inner)
+    end
+    return nothing
 end
 
 # --- 2. Quadrature window reconstruction ------------------------------------
@@ -121,7 +152,7 @@ _logcdf_ad_safe(d::Modified, x::Real) = _log1mexp(_logccdf_ad_safe(d, x))
 # delegate vector observations in a single call rather than a scalar map.
 # The remaining cdf-family functions have no batched `Convolved` methods, so
 # they keep the default scalar-map path.
-_has_batched_logpdf(::Convolved) = true
+_has_batched_method(::typeof(Distributions.logpdf), ::Convolved) = true
 _has_batched_method(::typeof(pdf), ::Convolved) = true
 _has_batched_method(::typeof(cdf), ::Convolved) = true
 
