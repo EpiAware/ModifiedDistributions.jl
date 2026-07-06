@@ -58,6 +58,14 @@ The hazard-modification maths implemented here is the closed-form continuous pat
 The discrete (interval-censored) path lives upstream in [CensoredDistributions.jl](https://github.com/EpiAware/CensoredDistributions.jl), where the interval types live.
 Negative additive effects need hazard clamping and numeric integration of the cumulative hazard (see CensoredDistributions#670) — not yet ported; use the `log` link for hazard reductions (`modify(d, -0.5)` with the default link scales the hazard by `exp(-0.5)`).
 
+## Does this work with composed distribution chains?
+
+Yes.
+Loading [ComposedDistributions.jl](https://github.com/EpiAware/ComposedDistributions.jl) activates a package extension that lets the modifier verbs apply to a `Sequential` chain.
+A chain observes one scalar quantity — its convolved total — so a modifier on the chain modifies that observed scalar: the chain collapses to its convolved total first, then the modifier wraps the resulting univariate distribution.
+A `Parallel` has several independent endpoints and no single observed scalar, so the verbs are not defined for it.
+See the [Modifiers across composed chains](@ref composed-chains) tutorial.
+
 ## How do I cite ModifiedDistributions?
 
 See the citation section of the [README](https://github.com/EpiAware/ModifiedDistributions.jl#supporting-and-citing).

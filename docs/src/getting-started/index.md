@@ -90,6 +90,22 @@ nested = weight(affine(Normal(0, 1); scale = 2.0), 3.0)
 
 Downstream packages can extend `get_dist` for their own wrappers to join the same protocol.
 
+## Extensions
+
+Loading [ComposedDistributions.jl](https://github.com/EpiAware/ComposedDistributions.jl) alongside this package activates an extension that lets the modifier verbs apply to a composed `Sequential` chain.
+A chain observes one scalar quantity, its convolved total, so a modifier on the chain modifies that observed scalar:
+
+```julia
+using ModifiedDistributions, ComposedDistributions, Distributions
+
+chain = sequential(:onset_admit => Gamma(2.0, 1.0),
+    :admit_death => LogNormal(0.5, 0.4))
+wd = weight(chain, 3.0)  # weights the chain's observed total
+logpdf(wd, 5.0) ≈ 3.0 * logpdf(observed_distribution(chain), 5.0)
+```
+
+The [Modifiers across composed chains](@ref composed-chains) tutorial works through this in full.
+
 ## Learning more
 
 - Want the full interface? See the [Public API](@ref public-api).
