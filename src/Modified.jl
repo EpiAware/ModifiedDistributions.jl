@@ -198,7 +198,7 @@ integration and are rejected at construction (see [`modify`](@ref)).
 - [`modify`](@ref): the constructor verb.
 """
 struct Modified{D <: UnivariateDistribution, E <: Real, L <: HazardLink} <:
-       UnivariateDistribution{Continuous}
+       AbstractModifiedDistribution{Univariate, Continuous}
     "The base distribution whose hazard is modified."
     dist::D
     "The hazard modification effect on the link scale."

@@ -14,6 +14,8 @@ using Pkg
 Pkg.add("ModifiedDistributions")
 ```
 
+See the [Installation](@ref installation) page for more detail.
+
 Load the package alongside Distributions.jl:
 
 ```@example quickstart

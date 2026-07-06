@@ -49,11 +49,18 @@ Transformed/
 Modified/
   LogLink/         (construction, logpdf, pdf, cdf, ccdf, quantile, rand)
   IdentityLink/    (construction, logpdf, pdf, cdf, ccdf, quantile, rand)
+
+AD gradients/
+  <scenario>/      (one leaf per AD backend)
 ```
 
 The `Baseline` group is the floor: every modifier wraps the same base LogNormal and benchmarks the same operations over the same points.
 `Transformed` rows should sit on that floor (the forward ops are transparent to every distribution method).
 `Modified/IdentityLink` `quantile` and `rand` exercise the monotone-bisection cdf inversion, the one non-closed-form path.
+
+The `AD gradients` group (`benchmark/src/ad_gradients.jl`) times `DifferentiationInterface.gradient` for every (scenario, backend) pair from the `test/ADFixtures` path package, which also drives the AD test suite (`test/ad/runtests.jl`), keeping the two surfaces in lock-step.
+Backends cover ForwardDiff, ReverseDiff (tape), Mooncake (reverse and forward) and Enzyme (reverse and forward).
+Each pair is smoke-tested for a finite gradient before registration, so known-broken combinations are silently omitted and the suite can run unattended.
 
 ## CI Integration
 

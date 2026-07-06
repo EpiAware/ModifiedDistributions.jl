@@ -14,6 +14,7 @@ The suite (`benchmark/benchmarks.jl`) evaluates construction, `logpdf`, `pdf`, `
 - `Weighted`: the `logpdf` weight paths, scalar and the vectorised `Product{Weighted}` form.
 - `Transformed`: `thin` and `cumulative`, whose forward ops are transparent to every distribution method, so these rows should sit on the baseline.
 - `Modified`: the hazard modification on both analytic links; the identity-link `quantile` and `rand` exercise the monotone-bisection cdf inversion, the one non-closed-form path.
+- `AD gradients`: `DifferentiationInterface.gradient` of every `test/ADFixtures` scenario across the ForwardDiff, ReverseDiff, Mooncake and Enzyme backends, sharing the fixtures that drive the AD test suite.
 
 Run the suite locally with `task benchmark`, or compare against `main` with `task benchmark-compare` (see `benchmark/README.md`).
 On pull requests the [benchmark workflow](https://github.com/EpiAware/ModifiedDistributions.jl/blob/main/.github/workflows/benchmark.yaml) benchmarks head and base in separate jobs and posts a single comparison comment.
