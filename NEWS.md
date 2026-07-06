@@ -2,6 +2,10 @@
 
 This file tracks notes for major releases and significant milestones; GitHub Releases (auto-generated from merged PRs) cover every release in between.
 
+## v0.1.0 - Initial release
+
+Built on the EpiAwarePackageTools scaffold: managed CI, DocumenterVitepress docs, Aqua/ExplicitImports/JET quality gates, the six-backend AD gradient harness, and the evaluation + AD benchmark suite (#9, #25).
+
 ### Features
 
 - Ported the `Affine` modifier from CensoredDistributions.jl: `affine(dist; scale, shift)` gives the exact change-of-variables distribution of `scale * X + shift`, including tail-accurate `ccdf`/`logccdf`, summary statistics, and discrete-support handling (#10, #13).
@@ -10,11 +14,8 @@ This file tracks notes for major releases and significant milestones; GitHub Rel
 - Added the generic `get_dist`/`get_dist_recursive` unwrap protocol, extendable by downstream wrapper packages (#10).
 - Added the `modify` hazard-modification verb: `Modified` transforms a continuous distribution's hazard through a link, with closed-form proportional-hazards (`log`, default) and additive-hazards (`identity`, non-negative effects, hazard accrued from the support minimum) paths. General links, negative additive effects, and the discrete path stay upstream in CensoredDistributions.jl (#12, #17).
 - Added a ComposedDistributions.jl package extension letting the modifier verbs apply across a composed `Sequential` chain by modifying its observed scalar (#14).
+- Reinstated the `AbstractModifiedDistribution` supertype and interface contract shared with the CensoredDistributions hierarchy (#27).
 
 ### Documentation
 
-- Getting-started overview touring every modifier, an FAQ, a guide to writing new modifiers, an extended README, and a package logo (#19).
-
-## v0.1.0 - Initial release
-
-Everything under Unreleased above ships as the initial registered release, on the EpiAwarePackageTools scaffold (managed CI, DocumenterVitepress docs, Aqua/ExplicitImports/JET quality gates, and the multi-backend AD test harness) (#9).
+- Getting-started overview touring every modifier, tutorials (weighted likelihoods, the modifier pipeline, composed chains), an FAQ, developer guides, an extended README, and a package logo (#19, #20, #23).
