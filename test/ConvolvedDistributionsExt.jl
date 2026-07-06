@@ -215,13 +215,18 @@ end
     @test g3 ≈ fdgrad(f3, [2.0, 1.0, 0.4]) rtol=1e-4
 
     # Modified as the LAST component exercises the pdf path, whose
-    # quadrature calls the raw `pdf(last_comp, t)`: differentiating it
-    # needs the pending ConvolvedDistributions `_pdf_ad_safe` hook, so
-    # this gradient stays broken for now.
+    # quadrature calls the raw `pdf(last_comp, t)` rather than an AD-safe
+    # hook. ForwardDiff's operator-overloading Duals happen to flow
+    # through the raw call (the Gamma log-survival inside the Modified
+    # logpdf is pure Julia), so this passes here; reverse-mode backends
+    # need registered rules and so still wait on the pending
+    # ConvolvedDistributions `_pdf_ad_safe` hook before this case can
+    # join the per-backend AD suite.
     f4 = θ -> pdf(
         convolve_distributions(
             LogNormal(0.5, 0.4), modify(Gamma(θ[1], θ[2]), θ[3])),
         6.0)
-    @test_broken ForwardDiff.gradient(f4, [2.0, 1.0, 0.4]) isa
-                 Vector{Float64}
+    g4 = ForwardDiff.gradient(f4, [2.0, 1.0, 0.4])
+    @test all(isfinite, g4)
+    @test g4 ≈ fdgrad(f4, [2.0, 1.0, 0.4]) rtol=1e-4
 end
