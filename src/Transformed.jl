@@ -150,6 +150,18 @@ for f in (:pdf, :logpdf, :cdf, :logcdf, :ccdf, :logccdf, :quantile)
     @eval Distributions.$f(d::Transformed, x::Real) = Distributions.$f(d.dist, x)
 end
 
+# Batched observations delegate the whole vector to the inner distribution
+# in one call when it declares a specialised batched method (e.g. a
+# convolved distribution's single-solve quadrature), and map the scalar call
+# otherwise (see `_batched_eval`). A vector observation on a modifier is
+# per-point (the result is a vector), unlike the Product{Weighted}
+# joint-scalar convention.
+for f in (:pdf, :logpdf, :cdf, :logcdf, :ccdf, :logccdf)
+    @eval function Distributions.$f(d::Transformed, x::AbstractVector{<:Real})
+        return _batched_eval(Distributions.$f, d.dist, x)
+    end
+end
+
 Distributions.insupport(d::Transformed, x::Real) = insupport(d.dist, x)
 
 # The forward op doesn't change the sample type. Without this, batch sampling

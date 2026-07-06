@@ -136,8 +136,9 @@ end
     using Distributions
 
     # A spy inner distribution counting scalar vs batched calls. Forward
-    # transforms are transparent, so a vector observation must delegate to
-    # the inner distribution as one batched call per function.
+    # transforms are transparent, so when the inner declares specialised
+    # batched methods a vector observation must delegate to it as one
+    # batched call per function.
     struct SpyDist <: ContinuousUnivariateDistribution
         dist::Gamma{Float64}
         nscalar::Base.RefValue{Int}
@@ -153,6 +154,13 @@ end
                 d::SpyDist, x::AbstractVector{<:Real})
             d.nvector[] += 1
             return map(Base.Fix1(Distributions.$f, d.dist), x)
+        end
+    end
+    ModifiedDistributions._has_batched_logpdf(::SpyDist) = true
+    for f in (:pdf, :cdf, :logcdf, :ccdf, :logccdf)
+        @eval function ModifiedDistributions._has_batched_method(
+                ::typeof(Distributions.$f), ::SpyDist)
+            return true
         end
     end
 

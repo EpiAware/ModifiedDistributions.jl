@@ -233,10 +233,10 @@ end
 @testitem "Affine delegates a whole batch to the inner distribution" begin
     using Distributions
 
-    # A spy inner distribution counting scalar vs batched calls. A vector
-    # observation must reach the inner distribution as one batched call (so
-    # a batched inner implementation, e.g. a convolved distribution's
-    # single-solve quadrature, is exploited), never as a per-point fan-out.
+    # A spy inner distribution counting scalar vs batched calls. When the
+    # inner declares specialised batched methods (as a convolved
+    # distribution's single-solve quadrature does), a vector observation
+    # must reach it as one batched call, never as a per-point fan-out.
     struct SpyDist <: ContinuousUnivariateDistribution
         dist::LogNormal{Float64}
         nscalar::Base.RefValue{Int}
@@ -252,6 +252,13 @@ end
                 d::SpyDist, x::AbstractVector{<:Real})
             d.nvector[] += 1
             return map(Base.Fix1(Distributions.$f, d.dist), x)
+        end
+    end
+    ModifiedDistributions._has_batched_logpdf(::SpyDist) = true
+    for f in (:cdf, :logcdf, :ccdf, :logccdf)
+        @eval function ModifiedDistributions._has_batched_method(
+                ::typeof(Distributions.$f), ::SpyDist)
+            return true
         end
     end
 

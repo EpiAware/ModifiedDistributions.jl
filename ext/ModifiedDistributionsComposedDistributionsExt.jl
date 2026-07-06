@@ -14,11 +14,13 @@
 # `ComposedDistributionsModifiedDistributionsExt`.
 #
 # Function owner: ModifiedDistributions (`affine` / `weight` / `thin` /
-# `cumulative` / `series_transform`). Type owner: ComposedDistributions
-# (`Sequential`). The extension depends on both, so there is no piracy.
+# `cumulative` / `series_transform` / `modify`). Type owner:
+# ComposedDistributions (`Sequential`). The extension depends on both, so
+# there is no piracy.
 module ModifiedDistributionsComposedDistributionsExt
 
-import ModifiedDistributions: affine, weight, thin, cumulative, series_transform
+import ModifiedDistributions: affine, weight, thin, cumulative,
+                              series_transform, modify
 using ComposedDistributions: Sequential, observed_distribution
 
 # An affine transform of the chain's observed total.
@@ -40,5 +42,12 @@ thin(d::Sequential, p::Real) = thin(observed_distribution(d), p)
 thin(d::Sequential, ::Nothing) = d
 cumulative(d::Sequential) = cumulative(observed_distribution(d))
 series_transform(d::Sequential, op) = series_transform(observed_distribution(d), op)
+
+# A hazard modification of the chain's observed total. The `nothing` form
+# mirrors the univariate constructor.
+function modify(d::Sequential, effect::Real; link = log)
+    return modify(observed_distribution(d), effect; link)
+end
+modify(d::Sequential, ::Nothing) = d
 
 end # module

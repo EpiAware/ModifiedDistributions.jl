@@ -496,3 +496,14 @@ Compute the log cumulative distribution function.
 See also: [`cdf`](@ref)
 "
 logcdf(d::Modified, x::Real) = _log1mexp(logccdf(d, x))
+
+# Batched observations: a vector observation on a modifier is per-point (the
+# result is a vector), unlike the Product{Weighted} joint-scalar convention.
+# The hazard paths evaluate pointwise — the analytic forms combine the base
+# logpdf/logccdf per point and no batched inner logccdf exists to exploit —
+# so a vector maps the scalar methods.
+for f in (:pdf, :logpdf, :cdf, :logcdf, :ccdf, :logccdf)
+    @eval function Distributions.$f(d::Modified, x::AbstractVector{<:Real})
+        return map(Base.Fix1(Distributions.$f, d), x)
+    end
+end

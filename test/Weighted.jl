@@ -605,9 +605,9 @@ end
 @testitem "Weighted delegates a whole batch to the base distribution" begin
     using Distributions
 
-    # A spy base distribution counting scalar vs batched logpdf calls. A
-    # vector observation must reach the base as one batched call, never as
-    # a per-point fan-out.
+    # A spy base distribution counting scalar vs batched logpdf calls. When
+    # the base declares a specialised batched logpdf, a vector observation
+    # must reach it as one batched call, never as a per-point fan-out.
     struct SpyDist <: ContinuousUnivariateDistribution
         dist::Normal{Float64}
         nscalar::Base.RefValue{Int}
@@ -622,6 +622,7 @@ end
         d.nvector[] += 1
         return map(Base.Fix1(logpdf, d.dist), x)
     end
+    ModifiedDistributions._has_batched_logpdf(::SpyDist) = true
 
     spy = SpyDist()
     wd = weight(spy, 2.0)
