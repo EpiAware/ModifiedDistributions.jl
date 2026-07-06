@@ -1,6 +1,4 @@
-# ============================================================================
-# TestUtils: a public interface-conformance harness for modifier leaves
-# ============================================================================
+# TestUtils: a public interface-conformance harness for modifier leaves.
 #
 # `ModifiedDistributions.TestUtils.test_modified_interface(d)` runs one
 # interface checklist over a modifier leaf, so a downstream author writing a

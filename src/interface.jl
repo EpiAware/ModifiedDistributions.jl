@@ -1,6 +1,4 @@
-# ============================================================================
-# Abstract type hierarchy: the single-base modifier leaves
-# ============================================================================
+# Abstract type hierarchy: the single-base modifier leaves.
 #
 # The modifier family shares one supertype (concrete types subtype the
 # abstract; shared behaviour and the documented interface contract hang off
