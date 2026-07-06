@@ -46,7 +46,7 @@ end
     obs = observed_distribution(seq)
     x = 3.0
 
-    # thin / cumulative / transform stay transparent to logpdf of the observed
+    # thin / cumulative / map_series stay transparent to logpdf of the observed
     # total and carry their ops for a downstream series.
     th = thin(seq, 0.3)
     @test th isa ModifiedDistributions.Transformed
@@ -58,7 +58,7 @@ end
     @test cu.op isa ModifiedDistributions.CumulativeOp
     @test logpdf(cu, x) ≈ logpdf(obs, x)
 
-    tr = transform(seq, s -> 2.0 .* s)
+    tr = ModifiedDistributions.map_series(seq, s -> 2.0 .* s)
     @test tr isa ModifiedDistributions.Transformed
     @test logpdf(tr, x) ≈ logpdf(obs, x)
 
