@@ -7,6 +7,7 @@ version = "0.1.0"
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
 ComposedDistributions = "2f642b71-32a9-4f47-97c4-6deb7517f7a7"
+ConvolvedDistributions = "f5b942c9-bc5b-4664-8486-7f531bb06742"
 DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
 DifferentiationInterfaceTest = "a82114a7-5aa3-49a8-9643-716bb13727a3"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
@@ -18,8 +19,9 @@ ModifiedDistributions = "664e6f8c-d74f-44d3-9f37-f82699103046"
 
 [sources]
 ModifiedDistributions = {path = "../.."}
-# Unregistered; pinned by git so the fixture package resolves. Its hard-dep
-# ConvolvedDistributions is pinned in `test/ad/Project.toml` (the active
-# project during the AD suite), where it must be a direct dep because
-# `[sources]` entries only apply to the active project's direct dependencies.
+# Unregistered; pinned by git so the fixture package resolves standalone.
+# During the AD suite the active project is `test/ad`, whose own direct
+# ConvolvedDistributions pin governs resolution (`[sources]` entries only
+# apply to the active project's direct dependencies).
 ComposedDistributions = {url = "https://github.com/EpiAware/ComposedDistributions.jl", rev = "main"}
+ConvolvedDistributions = {url = "https://github.com/EpiAware/ConvolvedDistributions.jl", rev = "main"}
