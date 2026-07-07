@@ -648,3 +648,12 @@ end
     @test length(draws_pois) == 4
     @test all(>=(0), draws_pois)
 end
+
+@testitem "scalar rand delegates to the base distribution" begin
+    using Distributions, Random
+
+    wd = weight(Gamma(2.0, 3.0), 5.0)
+    draw = rand(MersenneTwister(11), wd)
+    @test draw isa Real
+    @test draw > 0
+end

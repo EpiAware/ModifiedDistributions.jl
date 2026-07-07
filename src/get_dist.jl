@@ -72,6 +72,22 @@ end
 
 @doc "
 
+Extract the component distributions from a product distribution.
+
+Returns a vector containing the underlying distribution of each component,
+so `get_dist_recursive` can unwrap vectorised forms such as
+`weight(dist, weights)`.
+
+# Note
+Unlike the other `get_dist` methods this returns a vector of distributions
+rather than a single distribution.
+"
+function get_dist(d::Product)
+    return d.v
+end
+
+@doc "
+
 Recursively extract the underlying distribution from nested wrapper types.
 
 This function keeps applying `get_dist` until it reaches a distribution that

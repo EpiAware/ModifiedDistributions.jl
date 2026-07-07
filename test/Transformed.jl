@@ -176,3 +176,12 @@ end
     @test spy.nscalar[] == 0
     @test spy.nvector[] == 6
 end
+
+@testitem "scalar rand delegates to the inner distribution" begin
+    using Distributions, Random
+
+    d = thin(Gamma(2.0, 1.0), 0.3)
+    draw = rand(MersenneTwister(3), d)
+    @test draw isa Real
+    @test draw > 0
+end
