@@ -10,7 +10,7 @@
     # the modifier verbs need no new methods: both are univariate, the
     # constructors accept them directly, and `get_dist`'s default identity
     # is correct (there is nothing to unwrap).
-    conv = convolve_distributions(Gamma(2.0, 1.0), LogNormal(0.5, 0.4))
+    conv = convolved(Gamma(2.0, 1.0), LogNormal(0.5, 0.4))
     diff = difference(Gamma(2.0, 1.0), LogNormal(0.5, 0.4))
     x = 3.0
 
@@ -36,35 +36,35 @@ end
 
     delay = Gamma(2.0, 1.0)
     series = [0.0, 5.0, 12.0, 20.0, 15.0, 8.0, 3.0]
-    baseline = convolve_distributions(delay, series)
+    baseline = convolve_series(delay, series)
 
     # thin: the factor multiplies the unthinned baseline counts.
-    thinned = convolve_distributions(thin(delay, 0.3), series)
+    thinned = convolve_series(thin(delay, 0.3), series)
     @test thinned ≈ 0.3 .* baseline
 
     # cumulative: the running sum of the baseline counts.
-    cum = convolve_distributions(cumulative(delay), series)
+    cum = convolve_series(cumulative(delay), series)
     @test cum ≈ cumsum(baseline)
 
     # Nested wrappers apply their ops in order, innermost first:
     # accumulate, then thin.
     nested = thin(cumulative(delay), 0.3)
-    @test convolve_distributions(nested, series) ≈ 0.3 .* cumsum(baseline)
+    @test convolve_series(nested, series) ≈ 0.3 .* cumsum(baseline)
 
     # A custom series_transform op applies through the same hook.
     shifted = series_transform(delay, s -> s .+ 1.0)
-    @test convolve_distributions(shifted, series) ≈ baseline .+ 1.0
+    @test convolve_series(shifted, series) ≈ baseline .+ 1.0
 
     # thin wrapping a Convolved total delay: the inner convolution's
     # discretised PMF drives the counts, then the thin factor applies.
-    total = convolve_distributions(Gamma(2.0, 1.0), LogNormal(0.5, 0.4))
-    total_counts = convolve_distributions(total, series)
-    @test convolve_distributions(thin(total, 0.3), series) ≈
+    total = convolved(Gamma(2.0, 1.0), LogNormal(0.5, 0.4))
+    total_counts = convolve_series(total, series)
+    @test convolve_series(thin(total, 0.3), series) ≈
           0.3 .* total_counts
 
     # The kwarg mirrors the upstream vector method: a non-unit interval is
     # rejected by the inner call.
-    @test_throws ArgumentError convolve_distributions(
+    @test_throws ArgumentError convolve_series(
         thin(delay, 0.3), series; interval = 2)
 end
 
@@ -76,7 +76,7 @@ end
     # An affine-transformed Gamma as a component takes the numeric
     # quadrature path and returns finite, sensible values.
     ag = affine(Gamma(2.0, 1.0); scale = 2.0, shift = 1.0)
-    d = convolve_distributions(ag, Normal(0.0, 1.0))
+    d = convolved(ag, Normal(0.0, 1.0))
     c = cdf(d, 6.0)
     @test isfinite(c)
     @test 0 < c < 1
@@ -94,7 +94,7 @@ end
     # this returns finite values with no MethodError (the
     # `_primal_distribution` fix).
     an = affine(Normal(0.0, 1.0); scale = 2.0, shift = 1.0)
-    d2 = convolve_distributions(Gamma(2.0, 1.0), an)
+    d2 = convolved(Gamma(2.0, 1.0), an)
     c2 = cdf(d2, 4.0)
     @test isfinite(c2)
     @test 0 < c2 < 1
@@ -187,7 +187,7 @@ end
 
     # Series handshake: gradient through the thinned convolved counts
     # w.r.t. the Gamma shape and scale.
-    f1 = θ -> sum(convolve_distributions(
+    f1 = θ -> sum(convolve_series(
         thin(Gamma(θ[1], θ[2]), 0.3), series))
     g1 = ForwardDiff.gradient(f1, [2.0, 1.0])
     @test all(isfinite, g1)
@@ -196,7 +196,7 @@ end
     # CDF of a Convolved with an affine component: gradient through the
     # inner LogNormal params and the affine scale and shift.
     f2 = θ -> cdf(
-        convolve_distributions(
+        convolved(
             affine(LogNormal(θ[1], θ[2]); scale = θ[3], shift = θ[4]),
             Gamma(2.0, 1.0)),
         8.0)
@@ -207,7 +207,7 @@ end
     # CDF of a Convolved with a Modified component: the kernel routes the
     # Modified survival through the base's AD-safe CDF family.
     f3 = θ -> cdf(
-        convolve_distributions(
+        convolved(
             modify(Gamma(θ[1], θ[2]), θ[3]), LogNormal(0.5, 0.4)),
         6.0)
     g3 = ForwardDiff.gradient(f3, [2.0, 1.0, 0.4])
@@ -223,7 +223,7 @@ end
     # ConvolvedDistributions `_pdf_ad_safe` hook before this case can
     # join the per-backend AD suite.
     f4 = θ -> pdf(
-        convolve_distributions(
+        convolved(
             LogNormal(0.5, 0.4), modify(Gamma(θ[1], θ[2]), θ[3])),
         6.0)
     g4 = ForwardDiff.gradient(f4, [2.0, 1.0, 0.4])
@@ -235,7 +235,7 @@ end
     using Distributions
     using ConvolvedDistributions
 
-    conv = convolve_distributions(Gamma(2.0, 1.0), LogNormal(0.3, 0.4))
+    conv = convolved(Gamma(2.0, 1.0), LogNormal(0.3, 0.4))
     # The traits route whole-batch evaluation of a wrapped Convolved
     # through its single-solve quadrature methods.
     @test ModifiedDistributions._has_batched_logpdf(conv)
@@ -264,16 +264,16 @@ end
     # A forward op wrapped inside another modifier cannot reach the series
     # convolution; silently dropping it produced wrong counts before the
     # guard (PR #41 review finding).
-    @test_throws ArgumentError convolve_distributions(
+    @test_throws ArgumentError convolve_series(
         weight(cumulative(delay), 3.0), series)
-    @test_throws ArgumentError convolve_distributions(
+    @test_throws ArgumentError convolve_series(
         affine(thin(delay, 0.3); scale = 2.0), series)
 
     # Outermost ops peel correctly even over a modified inner delay: the
     # weight only touches logpdf, so the convolved counts match the
     # unweighted inner delay's, accumulated.
-    baseline = convolve_distributions(delay, series)
-    counts = convolve_distributions(cumulative(weight(delay, 3.0)), series)
+    baseline = convolve_series(delay, series)
+    counts = convolve_series(cumulative(weight(delay, 3.0)), series)
     (accumulated = counts, expected = cumsum(baseline))
     @test counts ≈ cumsum(baseline)
 end

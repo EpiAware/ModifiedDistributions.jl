@@ -20,7 +20,7 @@ using ComposedDistributions: sequential
 # Loading ConvolvedDistributions activates
 # ModifiedDistributionsConvolvedDistributionsExt, whose series handshake
 # (a thinned convolved count series) is exercised below.
-using ConvolvedDistributions: convolve_distributions
+using ConvolvedDistributions: convolve_series
 using ADTypes: AutoForwardDiff, AutoReverseDiff, AutoMooncake,
                AutoMooncakeForward, AutoEnzyme
 using DifferentiationInterface: DifferentiationInterface, Constant
@@ -213,7 +213,7 @@ function scenarios(; with_reference::Bool = false, category::Symbol = :marginal)
     series_conv = [0.0, 5.0, 12.0, 20.0, 15.0, 8.0, 3.0]
     _push!("Thinned convolved series sum",
         (θ,
-            series) -> sum(convolve_distributions(
+            series) -> sum(convolve_series(
             thin(Gamma(θ[1], θ[2]), 0.3), series)),
         [2.0, 1.0], (Constant(series_conv),))
 

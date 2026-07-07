@@ -43,22 +43,22 @@ set_theme!(theme_latexfonts(); fontsize = 14)
 #
 # An observed delay is often the sum of stages: here infection-to-onset
 # plus onset-to-report.
-# `convolve_distributions` fuses the two into one total-delay distribution,
+# `convolve_series` fuses the two into one total-delay distribution,
 # and its mean is the sum of the stage means.
 
 onset = Gamma(2.0, 1.0)
 report = LogNormal(0.5, 0.4)
-total = convolve_distributions(onset, report)
+total = convolved(onset, report)
 (total_mean = mean(total), stage_sum = mean(onset) + mean(report))
 
-# With a numeric series as the second argument, `convolve_distributions`
+# With a numeric series as the second argument, `convolve_series`
 # instead discretises the delay to a daily PMF and convolves the series
 # with it.
 # Feeding it an expected-infections curve gives the expected reported
 # counts each day.
 
 infections = [0.0, 10.0, 40.0, 90.0, 120.0, 100.0, 60.0, 30.0, 12.0, 4.0]
-reported = convolve_distributions(total, infections)
+reported = convolve_series(total, infections)
 reported
 
 # ## Thinning the convolved counts (ascertainment)
@@ -68,7 +68,7 @@ reported
 # extension applies it to the convolved counts: every day below is `0.3`
 # times the unthinned baseline.
 
-ascertained = convolve_distributions(thin(total, 0.3), infections)
+ascertained = convolve_series(thin(total, 0.3), infections)
 (day4_thinned = ascertained[4], day4_check = 0.3 * reported[4])
 
 # Plotting the baseline against the thinned series shows the op acting on
@@ -94,13 +94,13 @@ draw(
 # [`cumulative`](@ref) accumulates the convolved counts into a running
 # total, so the final day below equals the sum of the whole daily series.
 
-cumulative_counts = convolve_distributions(cumulative(total), infections)
+cumulative_counts = convolve_series(cumulative(total), infections)
 (final_cumulative = cumulative_counts[end], daily_sum = sum(reported))
 
 # The wrappers nest, applying innermost first: thinning then accumulating
 # gives cumulative ascertained incidence.
 
-cum_ascertained = convolve_distributions(
+cum_ascertained = convolve_series(
     thin(cumulative(total), 0.3), infections)
 (final = cum_ascertained[end], check = 0.3 * sum(reported))
 
@@ -117,7 +117,7 @@ stretched = affine(total; scale = 2.0)
 
 #
 
-reported_stretched = convolve_distributions(stretched, infections)
+reported_stretched = convolve_series(stretched, infections)
 (peak_day_base = days[argmax(reported)],
     peak_day_stretched = days[argmax(reported_stretched)])
 
@@ -130,8 +130,8 @@ reported_stretched = convolve_distributions(stretched, infections)
 # distribution method, so the fused CDF with and without the op agree
 # exactly.
 
-fused_plain = convolve_distributions(onset, report)
-fused_thinned_stage = convolve_distributions(thin(onset, 0.3), report)
+fused_plain = convolved(onset, report)
+fused_thinned_stage = convolved(thin(onset, 0.3), report)
 (cdf_plain = cdf(fused_plain, 4.0),
     cdf_with_op_inside = cdf(fused_thinned_stage, 4.0))
 
@@ -143,7 +143,7 @@ fused_thinned_stage = convolve_distributions(thin(onset, 0.3), report)
 
 # ## Summary
 #
-# - `convolve_distributions(delay, series)` turns an infection series into
+# - `convolve_series(delay, series)` turns an infection series into
 #   expected downstream counts, and the extension lets [`thin`](@ref),
 #   [`cumulative`](@ref) and [`series_transform`](@ref) act on those counts.
 # - Wrappers nest and apply innermost first.

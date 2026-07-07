@@ -2,7 +2,7 @@
 #
 # The modifier wrappers meet ConvolvedDistributions' two jobs: the
 # distribution-level convolution (`Convolved`) and the series convolution
-# (`convolve_distributions(delay, series)`).
+# (`convolve_series(delay, series)`).
 #
 # `Convolved` / `Difference` themselves need no modifier methods: both are
 # univariate, so the modifier constructors accept them directly and
@@ -27,13 +27,13 @@
 #    A `Modified` component routes its closed-form survival through the
 #    base's AD-safe log-survival to keep that property.
 #
-# Function owner: ConvolvedDistributions (`convolve_distributions`,
+# Function owner: ConvolvedDistributions (`convolve_series`,
 # `_primal_distribution`, the `_*_ad_safe` family). Type owner:
 # ModifiedDistributions (`Transformed`, `Affine`, `Weighted`, `Modified`).
 # The extension depends on both, so there is no piracy.
 module ModifiedDistributionsConvolvedDistributionsExt
 
-import ConvolvedDistributions: convolve_distributions, _primal_distribution,
+import ConvolvedDistributions: convolve_series, _primal_distribution,
                                _cdf_ad_safe, _ccdf_ad_safe, _logcdf_ad_safe,
                                _logccdf_ad_safe
 using ConvolvedDistributions: _primal
@@ -52,12 +52,12 @@ using Distributions: Distributions, pdf, cdf
 # with the series, then apply the ops (innermost first) to the resulting
 # counts. Mirrors the upstream vector-method signature; the `interval`
 # keyword is validated by the inner call.
-function convolve_distributions(
+function convolve_series(
         delay::Transformed, series::AbstractVector{<:Real};
         interval = 1)
     inner, ops = _peel_forward(delay)
     _check_no_buried_forward_op(inner)
-    counts = convolve_distributions(inner, series; interval)
+    counts = convolve_series(inner, series; interval)
     return _apply_forward_ops(counts, ops)
 end
 
@@ -65,11 +65,11 @@ end
 # cannot be peeled without a generic rewrap protocol, and silently
 # convolving the wrapper would drop the op. Reject with guidance: forward
 # ops go outermost.
-function convolve_distributions(
+function convolve_series(
         delay::AbstractModifiedDistribution, series::AbstractVector{<:Real};
         interval = 1)
     _check_no_buried_forward_op(delay)
-    return invoke(convolve_distributions,
+    return invoke(convolve_series,
         Tuple{Distributions.UnivariateDistribution,
             AbstractVector{<:Real}},
         delay, series; interval)
