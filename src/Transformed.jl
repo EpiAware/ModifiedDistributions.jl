@@ -16,11 +16,29 @@
 
 # The ops.
 
-# Multiply the series by a fixed factor (thinning / rescaling of expected
-# counts). `cumulative` accumulates the series. Typed so the factor is readable.
+@doc "
+
+The forward op carried by [`thin`](@ref): multiply a downstream count
+series by a fixed factor (thinning / rescaling of expected counts).
+`factor` is the public field, so downstream packages can dispatch on
+`Transformed{D, <:ThinOp}` and read or rebuild the factor.
+
+# See also
+- [`thin`](@ref): the constructor verb.
+"
 struct ThinOp{T <: Real}
+    "The fixed multiplicative factor applied to the series."
     factor::T
 end
+
+@doc "
+
+The forward op carried by [`cumulative`](@ref): accumulate a downstream
+count series with a running sum.
+
+# See also
+- [`cumulative`](@ref): the constructor verb.
+"
 struct CumulativeOp end
 
 # Apply one op to a series. A bare callable is its own op (the escape hatch).
