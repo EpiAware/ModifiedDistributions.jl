@@ -17,8 +17,15 @@ const QA_CONFIG = (
     aqua = (;),
 
     # ExplicitImports `ignore`: symbols an extension legitimately imports
-    # non-publicly. Tuple of Symbols, e.g. (:_internal_helper,).
-    ei_ignore = (),
+    # non-publicly. The ConvolvedDistributions extension wires internal
+    # machinery on both sides by design: this package's forward-op peeling
+    # and batched-evaluation traits, and ConvolvedDistributions' quadrature
+    # window / ad-safe families (the same pattern as its own
+    # SurvivalDistributions extension).
+    ei_ignore = (:_IdentityModified, :_LogModified, :_apply_forward_ops,
+        :_has_batched_method, :_log1mexp, :_peel_forward,
+        :_cdf_ad_safe, :_ccdf_ad_safe, :_logcdf_ad_safe,
+        :_logccdf_ad_safe, :_primal, :_primal_distribution),
 
     # Docstring `crossref_ignore`: upstream names docstrings link to via
     # `[`name`](@ref)`, e.g. (:pdf, :cdf, :logpdf).
