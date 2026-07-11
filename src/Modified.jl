@@ -28,28 +28,6 @@ function _logaddexp(a::Real, b::Real)
     return m + log1p(exp(-abs(a - b)))
 end
 
-# Strip any AD wrapper (ForwardDiff `Dual`, ReverseDiff `TrackedReal`, ...) from
-# a scalar, returning its underlying primal value. The generic method is the
-# identity on a plain real; the numeric-path knot scan uses it to keep the clamp
-# knots (which carry no gradient) off the AD trace. This package ships no
-# per-backend stripping extension, so under a tracing backend the scan simply
-# stays traced; the clamp knots only matter for the negative-effect / custom
-# non-negative-inverse links, and the continuous numeric path is exercised under
-# ForwardDiff, where the integration bounds are plain data.
-_primal(x::Real) = x
-
-# Rebuild a distribution with its parameters stripped to primal values via the
-# type's positional constructor (`params` round-trips through the constructor
-# for the Distributions.jl families used here). The core `_primal` is the
-# identity, so this only matters once a per-backend stripping extension is
-# added; a modifier wrapper (whose constructor is not `Type(params...)`) is
-# returned unchanged.
-function _primal_distribution(d::UnivariateDistribution)
-    D = Base.typename(typeof(d)).wrapper
-    return D(map(_primal, params(d))...)
-end
-_primal_distribution(d::AbstractModifiedDistribution) = d
-
 @doc """
 
 A link for the hazard modification carried by a [`Modified`](@ref)
@@ -205,8 +183,8 @@ end
 A distribution whose hazard is modified through a link.
 
 `Modified` carries a base distribution `dist`, a hazard `effect`, a
-[`HazardLink`](@ref) `link` and a quadrature `method`, and lazily instantiates
-the modified hazard
+[`HazardLink`](@ref) `link` and a quadrature `method` (`nothing` selects the
+extension's default solver), and lazily instantiates the modified hazard
 
 ```math
 h^{*}(t) = g^{-1}\\!\\big(g(h(t)) + \\text{effect}\\big)
@@ -226,11 +204,15 @@ The instantiation path is chosen by dispatch on the base and the link:
   ``S^{*}(t) = S(t)\\,e^{-\\beta (t - m)}``;
 - continuous base, any other link (or a negative additive effect, or a callable
   `effect(t)`): numeric, integrating the modified cumulative hazard through the
-  `method` quadrature solver. The integrator assumes an eventually-monotone
-  hazard, and a negative additive (or general-link) effect clamps the hazard at
-  zero — for a base with a non-monotone (peak-then-decay) hazard the clamp can
-  make the modified law defective (sub-stochastic, integrating to less than
-  one), in which case `quantile`/`rand` above the total mass are undefined;
+  `method` quadrature solver. This path lives in the ConvolvedDistributions
+  extension and reuses that package's Gauss-Legendre quadrature, so it needs
+  `using ConvolvedDistributions`; without it the `Modified` still constructs but
+  evaluating it throws an `ArgumentError`. The integrator assumes an
+  eventually-monotone hazard, and a negative additive (or general-link) effect
+  clamps the hazard at zero — for a base with a non-monotone (peak-then-decay)
+  hazard the clamp can make the modified law defective (sub-stochastic,
+  integrating to less than one), in which case `quantile`/`rand` above the total
+  mass are undefined;
 - discrete base with a per-bin effect vector: exact per-bin PMF reconstruction
   through the discrete-time reporting hazard.
 
@@ -239,7 +221,8 @@ The instantiation path is chosen by dispatch on the base and the link:
 - `effect`: the hazard modification (a scalar, a callable `effect(t)`, or a
   per-bin vector for a discrete base).
 - `link`: the hazard link `g` and its inverse.
-- `method`: the quadrature solver used on the continuous numeric path.
+- `method`: the quadrature solver used on the continuous numeric path, or
+  `nothing` to let the ConvolvedDistributions extension pick its default.
 
 # See also
 - [`modify`](@ref): the constructor verb.
@@ -253,7 +236,8 @@ struct Modified{D <: UnivariateDistribution, E, L <: HazardLink, M} <:
     effect::E
     "The hazard link `g` and its inverse."
     link::L
-    "The quadrature solver used on the continuous numeric path."
+    "The quadrature solver used on the continuous numeric path, or `nothing`
+    to defer to the ConvolvedDistributions extension's default solver."
     method::M
 
     function Modified(dist::D, effect::E, link::L,
@@ -299,9 +283,14 @@ composes everywhere a `UnivariateDistribution` does.
 For a continuous base the `log` link (and the `identity` link with a
 non-negative effect) use closed forms; any other link, a negative additive
 effect, or a callable `effect(t)` integrates the modified cumulative hazard
-numerically through the `method` solver. For a discrete base, `effect` is a
-per-bin vector and the modified PMF is reconstructed exactly through the
-discrete-time reporting hazard, for any link including a user callable.
+numerically through the `method` solver. That numeric path lives in the
+ConvolvedDistributions extension and reuses that package's Gauss-Legendre
+quadrature, so it needs `using ConvolvedDistributions`: without it the
+`Modified` constructs but evaluating (`logpdf`/`cdf`/`quantile`/`rand`) throws
+an `ArgumentError`. For a discrete base, `effect` is a per-bin vector and the
+modified PMF is reconstructed exactly through the discrete-time reporting
+hazard, for any link including a user callable, in core with no extension
+needed.
 
 The non-negative `identity` link also requires a base with a finite lower
 support bound `m` (the extra hazard accrues from `m`).
@@ -328,8 +317,9 @@ CensoredDistributions.
 - `link`: the hazard link. The functions `log` (default) and `identity`, the
   symbols `:log`/`:identity`/`:logit`, or a [`HazardLink`](@ref) such as
   [`LogitLink`](@ref) or one from [`hazard_link`](@ref).
-- `method`: the quadrature solver for the continuous numeric path (default
-  `GaussLegendre(; n = 64)`).
+- `method`: the quadrature solver for the continuous numeric path, or `nothing`
+  (default) to let the ConvolvedDistributions extension pick its own solver
+  (`ConvolvedDistributions.GaussLegendre(; n = 64)`).
 
 # Examples
 ```@example
@@ -343,7 +333,9 @@ ccdf(d, 2.0)
 da = modify(LogNormal(1.5, 0.5), 0.2; link = identity)
 cdf(da, 2.0)
 
-# A reporting hazard on a continuous base via numeric integration.
+# A reporting hazard on a continuous base takes the numeric path, so load the
+# ConvolvedDistributions extension before evaluating it.
+using ConvolvedDistributions
 dl = modify(LogNormal(1.5, 0.5), 0.3; link = :logit)
 cdf(dl, 2.0)
 ```
@@ -353,7 +345,7 @@ cdf(dl, 2.0)
 - [`hazard_link`](@ref): wrap a custom link pair.
 """
 function modify(dist::UnivariateDistribution, effect; link = log,
-        method = GaussLegendre(; n = 64))
+        method = nothing)
     return Modified(dist, effect, _as_hazard_link(link), method)
 end
 
@@ -374,7 +366,7 @@ modify(d, nothing) === d
 ```
 "
 function modify(dist::UnivariateDistribution, ::Nothing; link = log,
-        method = GaussLegendre(; n = 64))
+        method = nothing)
     return dist
 end
 
@@ -491,7 +483,7 @@ function logccdf(d::_IdentityModified, x::Real)
     # hazard numerically (see the section comment above).
     if β < zero(β)
         x <= minimum(d.dist) && return zero(float(typeof(x)))
-        return -_modified_cumhazard(d, x)
+        return _numeric_logccdf(d, x)
     end
     # No hazard accrues below the support, so survival stays at one there; above
     # it the extra hazard accrues from the support minimum.
@@ -522,119 +514,37 @@ function logpdf(d::_IdentityModified, x::Real)
 end
 
 # ============================================================================
-# Continuous, general link: numeric modified cumulative hazard
+# Continuous, general link: numeric modified cumulative hazard (extension seam)
 # ============================================================================
 #
-# H*(t) = ∫ₘᵗ g⁻¹(g(h(u)) + effect(u)) du with h(u) = f(u)/S(u) the base hazard
-# and m = max(minimum, 0), integrated through the Gauss-Legendre `method`
-# solver. S*(t) = exp(-H*(t)). The `effect` may be a scalar or a callable.
+# The numeric path — a general link (logit or a custom callable), a negative
+# additive effect, or a callable `effect(t)` on a continuous base — integrates
+# H*(t) = ∫ₘᵗ g⁻¹(g(h(u)) + effect(u)) du and returns logS* = -H* and
+# logpdf* = log h* - H*. That quadrature reuses ConvolvedDistributions'
+# Gauss-Legendre solver, so the whole helper cloud (base hazard, clamp-knot scan
+# and panelled cumulative hazard) lives in the ConvolvedDistributions extension,
+# keeping core free of any quadrature dependency.
+#
+# These two seams route the numeric cases. Without the extension loaded they
+# throw a friendly error; the extension defines the real methods on the narrower
+# continuous-modified type, so those win by specificity once
+# `using ConvolvedDistributions`.
 
-# The base hazard h(u) = f(u)/S(u) = exp(logpdf - logccdf), clamped to a tiny
-# positive floor so the link's `log`/`logit` stays finite at the support edge
-# where the survival has numerically exhausted.
-function _base_hazard(dist::UnivariateDistribution, u::Real)
-    logS = logccdf(dist, u)
-    h = exp(logpdf(dist, u) - logS)
-    return max(h, eps(float(typeof(h))))
-end
+const _NUMERIC_PATH_MSG = string(
+    "numeric/general-link hazard modification needs ConvolvedDistributions; ",
+    "run `using ConvolvedDistributions` to enable it (a logit or custom-link ",
+    "effect, a negative additive effect, or a callable `effect(t)` on a ",
+    "continuous base routes through its Gauss-Legendre quadrature)")
 
-# The effect evaluated at `u`: a callable is applied, a scalar is constant.
-_effect_at(effect, u) = effect isa Function ? effect(u) : effect
+# The modified log-survival `logS*(t) = -H*(t)` on the numeric path. The real
+# method lives in the ConvolvedDistributions extension; this stub throws until
+# it loads.
+_numeric_logccdf(::Modified, x) = throw(ArgumentError(_NUMERIC_PATH_MSG))
 
-# The pre-clamp modified rate g⁻¹(g(h(u)) + effect(u)): the modified hazard
-# before the non-negativity clamp. Its zero-crossings are the knots where the
-# clamp engages.
-function _premodified_rate(d::Modified, u::Real)
-    h = _base_hazard(d.dist, u)
-    return d.link.invlink(d.link.g(h) + _effect_at(d.effect, u))
-end
-
-# The modified instantaneous hazard h*(u) = max(g⁻¹(g(h(u)) + effect(u)), 0).
-# The clamp keeps the modified hazard a valid (non-negative) hazard for links
-# whose inverse can return a negative rate (identity with a negative effect, or
-# a custom link). For links with a non-negative inverse (log -> exp, logit ->
-# logistic) the clamp is a no-op.
-function _modified_hazard(d::Modified, u::Real)
-    hstar = _premodified_rate(d, u)
-    return max(hstar, zero(hstar))
-end
-
-# The pre-clamp modified rate for the knot scan only, computed on AD-stripped
-# (primal) parameters so the rate — and the `logpdf`/`logccdf` it calls — never
-# runs under an AD trace. The knots only locate where the clamp engages and
-# carry no gradient.
-function _premodified_rate_primal(d::Modified, u::Real)
-    base = _primal_distribution(d.dist)
-    effect = d.effect isa Function ? d.effect : _primal(d.effect)
-    up = _primal(u)
-    h = _base_hazard(base, up)
-    return d.link.invlink(d.link.g(h) + _effect_at(effect, up))
-end
-
-# Locate the clamp knots in `(lo, t)`: the points where the pre-clamp modified
-# rate crosses zero, so the clamped integrand `max(rate, 0)` has a kink there. A
-# coarse scan brackets each sign change, then bisection refines it. Integrating
-# each smooth panel between knots (rather than one fixed rule over a kinked
-# integrand) keeps the cumulative hazard, and so the cdf, monotone.
-const _MODIFIED_KNOT_SCAN = 64
-
-function _modified_knots(d::Modified, lo::Real, t::Real)
-    rate(u) = _primal(_premodified_rate_primal(d, u))
-    knots = Float64[]
-    a = _primal(float(lo))
-    b = _primal(float(t))
-    step = (b - a) / _MODIFIED_KNOT_SCAN
-    step > zero(step) || return knots
-    prev_u = a
-    prev_r = rate(a)
-    for i in 1:_MODIFIED_KNOT_SCAN
-        cur_u = i == _MODIFIED_KNOT_SCAN ? b : a + i * step
-        cur_r = rate(cur_u)
-        if (prev_r < 0) != (cur_r < 0)
-            lo2, hi2 = prev_u, cur_u
-            for _ in 1:60
-                mid = (lo2 + hi2) / 2
-                (rate(lo2) < 0) == (rate(mid) < 0) ? (lo2 = mid) : (hi2 = mid)
-            end
-            push!(knots, (lo2 + hi2) / 2)
-        end
-        prev_u = cur_u
-        prev_r = cur_r
-    end
-    return knots
-end
-
-# The modified cumulative hazard H*(t) = ∫ₘᵗ h*(u) du via the solver. The lower
-# bound is the base support minimum (clamped at 0 for a delay); a `t` at or
-# below it carries no hazard. The clamped integrand is kinked wherever the clamp
-# engages, so split the integral at the clamp knots and integrate each smooth
-# panel, summing the pieces.
-function _modified_cumhazard(d::Modified, t::Real)
-    lo = max(minimum(d.dist), zero(t))
-    t <= lo && return zero(float(promote_type(typeof(t), eltype(d.dist))))
-    integrand = u -> _modified_hazard(d, u)
-    knots = _modified_knots(d, lo, t)
-    isempty(knots) && return integrate(d.method, integrand, lo, t)
-    acc = integrate(d.method, integrand, lo, oftype(t, knots[1]))
-    for k in 2:length(knots)
-        acc += integrate(d.method, integrand,
-            oftype(t, knots[k - 1]), oftype(t, knots[k]))
-    end
-    acc += integrate(d.method, integrand, oftype(t, knots[end]), t)
-    return acc
-end
-
-# `logpdf* = log h*(t) - H*(t)` from the clamped modified hazard and its numeric
-# cumulative hazard. The density is zero where the hazard is clamped to zero and
-# in the deep tail where the survival has numerically exhausted, keeping
-# log h* - H* from evaluating to NaN (Inf - Inf) where S* ≈ 0.
-function _numeric_logpdf(d::Modified, x::Real)
-    H = _modified_cumhazard(d, x)
-    hstar = _modified_hazard(d, x)
-    (isfinite(H) && isfinite(hstar)) || return oftype(float(x), -Inf)
-    hstar <= zero(hstar) && return oftype(float(x), -Inf)
-    return log(hstar) - H
-end
+# The modified log-density `log h*(t) - H*(t)` on the numeric path. The real
+# method lives in the ConvolvedDistributions extension; this stub throws until
+# it loads.
+_numeric_logpdf(::Modified, x) = throw(ArgumentError(_NUMERIC_PATH_MSG))
 
 # A general-link Modified on a continuous base: any continuous base with a
 # scalar or callable effect and a link that is not the analytic log/identity
@@ -651,7 +561,7 @@ See also: [`ccdf`](@ref), [`logpdf`](@ref)
 "
 function logccdf(d::_NumericModified, x::Real)
     x <= minimum(d.dist) && return zero(float(typeof(x)))
-    return -_modified_cumhazard(d, x)
+    return _numeric_logccdf(d, x)
 end
 
 @doc "

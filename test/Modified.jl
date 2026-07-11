@@ -217,6 +217,7 @@ end
 
 @testitem "Modified numeric path matches the closed forms" begin
     using Distributions
+    using ConvolvedDistributions
 
     base = LogNormal(1.5, 0.5)
 
@@ -244,6 +245,7 @@ end
 
 @testitem "Modified logit link accepted on a continuous base" begin
     using Distributions
+    using ConvolvedDistributions
 
     base = LogNormal(1.5, 0.5)
     d = modify(base, 0.3; link = :logit)
@@ -263,14 +265,16 @@ end
     end
 
     # The density integrates to one (fixed-node quadrature).
-    total = ModifiedDistributions.gl_integrate(
-        x -> pdf(d, x), 1e-6, 200.0, ModifiedDistributions._GL(400))
+    total = ConvolvedDistributions.integrate(
+        ConvolvedDistributions.GaussLegendre(; n = 400),
+        x -> pdf(d, x), 1e-6, 200.0)
     @test total≈1.0 atol=1e-4
 end
 
 @testitem "Modified negative additive effect stays a valid CDF" begin
     using Distributions
     using ForwardDiff
+    using ConvolvedDistributions
 
     # An additive-hazard model is only valid where h(t) + β >= 0. For a negative
     # β on a base with h(0) = 0 the raw hazard goes negative near the origin, so
@@ -302,6 +306,7 @@ end
 
 @testitem "Modified defective-law quantile throws cleanly" begin
     using Distributions
+    using ConvolvedDistributions
 
     # A negative additive effect clamps the early hazard of a LogNormal (whose
     # hazard peaks then decays), leaving the modified law sub-stochastic: its
@@ -322,6 +327,7 @@ end
 
 @testitem "Modified callable effect on the numeric path" begin
     using Distributions
+    using ConvolvedDistributions
 
     base = LogNormal(1.5, 0.5)
     # A constant callable effect matches the scalar logit modify to tolerance.
@@ -333,8 +339,9 @@ end
 
     # A time-varying effect gives a proper, finite density.
     dv = modify(base, t -> 0.1 * t; link = :logit)
-    total = ModifiedDistributions.gl_integrate(
-        x -> pdf(dv, x), 1e-6, 200.0, ModifiedDistributions._GL(400))
+    total = ConvolvedDistributions.integrate(
+        ConvolvedDistributions.GaussLegendre(; n = 400),
+        x -> pdf(dv, x), 1e-6, 200.0)
     @test total≈1.0 atol=1e-3
 end
 
@@ -399,6 +406,9 @@ end
 
 @testitem "Modified composes over thinned/weighted continuous bases (#46)" begin
     using Distributions
+    # The logit-link composition below takes the numeric path, which lives in
+    # the ConvolvedDistributions extension.
+    using ConvolvedDistributions
 
     base = LogNormal(1.5, 0.5)
 
@@ -454,6 +464,7 @@ end
 @testitem "Modified numeric path AD (ForwardDiff)" begin
     using Distributions
     using ForwardDiff
+    using ConvolvedDistributions
 
     obs = [0.5, 1.2, 2.5, 3.8]
     # LogNormal / Weibull have ForwardDiff-safe survival, so the numeric logit

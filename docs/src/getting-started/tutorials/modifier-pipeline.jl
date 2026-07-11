@@ -186,6 +186,13 @@ t = 1.0
 # than a closed form, so a `logit` link (or any invertible callable from
 # [`hazard_link`](@ref)) works on a continuous base. A constant callable
 # effect matches the equivalent scalar effect.
+#
+# The numeric path reuses ConvolvedDistributions.jl's Gauss-Legendre
+# quadrature, so it lives in a package extension: a numeric-path `modify`
+# constructs without it, but evaluating one needs `using ConvolvedDistributions`
+# first (the closed-form and discrete paths need only the core package).
+
+using ConvolvedDistributions
 
 logit_scalar = modify(hazard_base, 0.3; link = :logit)
 logit_callable = modify(hazard_base, t -> 0.3; link = :logit)

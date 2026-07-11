@@ -143,8 +143,7 @@ end
     @test pda.scale === 2.0
     @test pda.shift === 1.0
 
-    dm = Modified(dg, Dual(0.5, 1.0), ModifiedDistributions.LogLink,
-        ModifiedDistributions.GaussLegendre(; n = 64))
+    dm = Modified(dg, Dual(0.5, 1.0), ModifiedDistributions.LogLink, nothing)
     pdm = _primal_distribution(dm)
     @test params(pdm.dist) === (2.0, 1.0)
     @test pdm.effect === 0.5
@@ -277,4 +276,35 @@ end
     counts = convolve_series(cumulative(weight(delay, 3.0)), series)
     (accumulated = counts, expected = cumsum(baseline))
     @test counts ≈ cumsum(baseline)
+end
+
+@testitem "Convolved extension: numeric hazard path evaluates" begin
+    using Distributions
+    using ConvolvedDistributions
+
+    # The continuous numeric cumulative-hazard path (general link, negative
+    # additive effect, callable effect) lives in this extension. With it loaded
+    # the seams resolve to the real quadrature methods, so a logit-link
+    # continuous base evaluates to a proper, complementary, monotone law rather
+    # than throwing the core stub's ArgumentError.
+    base = LogNormal(1.5, 0.5)
+    d = modify(base, 0.3; link = :logit)
+    grid = range(0.1, 20.0; length = 30)
+    @test all(diff(cdf.(Ref(d), grid)) .>= -1e-9)
+    for x in (0.5, 2.0, 5.0)
+        @test isfinite(logpdf(d, x))
+        @test cdf(d, x) + ccdf(d, x) ≈ 1.0
+        @test logcdf(d, x) ≈ log(cdf(d, x))
+    end
+
+    # A negative additive effect routes through the same clamped numeric path.
+    dn = modify(base, -0.2; link = identity)
+    @test isfinite(logccdf(dn, 2.0))
+    @test cdf(dn, 2.0) + ccdf(dn, 2.0) ≈ 1.0
+
+    # An explicit solver threads through the constructor; `nothing` (the
+    # default) resolves to the extension's own GaussLegendre.
+    dm = modify(base, 0.3; link = :logit,
+        method = ConvolvedDistributions.GaussLegendre(; n = 96))
+    @test isfinite(logpdf(dm, 2.0))
 end

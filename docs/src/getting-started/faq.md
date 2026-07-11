@@ -62,6 +62,12 @@ The `log` link (proportional hazards) and the `identity` link with a non-negativ
 Any other link (`:logit` or an invertible callable from [`hazard_link`](@ref)), a negative additive effect, or a callable `effect(t)` on a continuous base routes through numeric cumulative-hazard integration.
 A discrete base takes a per-bin vector effect and reconstructs the modified PMF exactly through the discrete-time reporting hazard, for any link.
 
+The closed-form (`log` and non-negative `identity`) and the discrete per-bin paths need only the core package.
+The numeric path reuses [ConvolvedDistributions.jl](https://github.com/EpiAware/ConvolvedDistributions.jl)'s Gauss-Legendre quadrature, so it lives in a package extension.
+A `Modified` on the numeric path (a `:logit`/custom link, a negative additive effect, or a callable effect on a continuous base) still constructs without ConvolvedDistributions loaded, but evaluating it (`logpdf`, `cdf`, `quantile`, `rand`) throws an `ArgumentError` telling you to run `using ConvolvedDistributions`.
+Once that package is loaded the numeric path evaluates normally.
+This is the standard weak-dependency pattern: you only pay for the quadrature dependency when you use the numeric path.
+
 The epinowcast reference-by-report expected-count matrix layer (and the interval-censoring discretisation it needs) stays upstream in [CensoredDistributions.jl](https://github.com/EpiAware/CensoredDistributions.jl).
 The numeric path differentiates under ForwardDiff for bases with a ForwardDiff-safe survival (`LogNormal`, `Weibull`); a `Gamma` base on the numeric path needs the AD-safe gamma survival that lives upstream.
 

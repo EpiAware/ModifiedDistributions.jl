@@ -37,14 +37,6 @@ public IdentityLink
 public LogitLink
 public hazard_link
 
-# The Gauss-Legendre quadrature helper backing the general-link numeric
-# `modify` path (public but not exported). `GaussLegendre` stays unexported to
-# avoid clashing with `Integrals.GaussLegendre` and the identically named
-# solvers in the sibling packages when several are loaded.
-public GaussLegendre
-public integrate
-public gl_integrate
-
 # The discrete-time reporting-hazard vector helpers reused by the discrete
 # `modify` path (public but not exported): the PMF <-> hazard maps and the
 # per-bin logit-effect reshaping.
