@@ -143,7 +143,8 @@ end
     @test pda.scale === 2.0
     @test pda.shift === 1.0
 
-    dm = Modified(dg, Dual(0.5, 1.0), ModifiedDistributions.LogLink)
+    dm = Modified(dg, Dual(0.5, 1.0), ModifiedDistributions.LogLink,
+        ModifiedDistributions.GaussLegendre(; n = 64))
     pdm = _primal_distribution(dm)
     @test params(pdm.dist) === (2.0, 1.0)
     @test pdm.effect === 0.5

@@ -26,6 +26,10 @@ using Random: AbstractRNG
 # centralised here per the kit's import-centralisation gate).
 using DocStringExtensions: @template, DOCSTRING, EXPORTS, IMPORTS, TYPEDEF,
                            TYPEDFIELDS, TYPEDSIGNATURES
+# Gauss-Legendre nodes/weights for the general-link numeric cumulative-hazard
+# path (src/integration.jl). A single small leaf dependency keeps the numeric
+# `modify` path self-contained, so ConvolvedDistributions stays a weakdep.
+using FastGaussQuadrature: FastGaussQuadrature
 
 # Functions we extend (for method extension). `std`/`median`/`mode`/`skewness`/
 # `kurtosis`/`entropy` are extended by qualified name in Affine.jl, Weighted.jl
@@ -37,6 +41,7 @@ import Distributions: params, insupport, pdf, logpdf, cdf, logcdf,
 import Base: minimum, maximum
 # Types and constructors we use without extension.
 using Distributions: Distributions, Distribution, UnivariateDistribution,
+                     DiscreteUnivariateDistribution,
                      VariateForm, Univariate, Continuous, Discrete,
                      ValueSupport, Product, product_distribution
 
@@ -67,7 +72,13 @@ include("interface.jl")
 include("Affine.jl")
 include("Weighted.jl")
 include("Transformed.jl")
+# Pluggable Gauss-Legendre quadrature for the general-link numeric path;
+# included before Modified.jl, whose `modify` default builds a solver.
+include("integration.jl")
 include("Modified.jl")
+# Discrete-time reporting-hazard vector helpers reused by the discrete
+# Modified path; included after Modified.jl defines the link types.
+include("reporting_hazard.jl")
 include("get_dist.jl")
 
 # Public interface-conformance harness (a public submodule).

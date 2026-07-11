@@ -37,6 +37,21 @@ public IdentityLink
 public LogitLink
 public hazard_link
 
+# The Gauss-Legendre quadrature helper backing the general-link numeric
+# `modify` path (public but not exported). `GaussLegendre` stays unexported to
+# avoid clashing with `Integrals.GaussLegendre` and the identically named
+# solvers in the sibling packages when several are loaded.
+public GaussLegendre
+public integrate
+public gl_integrate
+
+# The discrete-time reporting-hazard vector helpers reused by the discrete
+# `modify` path (public but not exported): the PMF <-> hazard maps and the
+# per-bin logit-effect reshaping.
+public delay_hazard
+public hazard_to_pmf
+public apply_hazard_effects
+
 # `TestUtils.test_modified_interface(d)` lets a downstream author verify a
 # new modifier leaf against the interface contract.
 public TestUtils

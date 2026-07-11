@@ -7,7 +7,8 @@
 # This tutorial walks a delay distribution through the four verbs in turn:
 # an affine reparameterisation, the forward-series transforms
 # [`thin`](@ref) and [`cumulative`](@ref), the generic [`series_transform`](@ref)
-# escape hatch, and a hazard [`modify`](@ref) with both supported links.
+# escape hatch, and a hazard [`modify`](@ref) with the closed-form links, a
+# general link, callable and per-bin effects.
 # It closes with [`get_dist`](@ref) / [`get_dist_recursive`](@ref) unwrapping a
 # nested stack.
 #
@@ -17,7 +18,8 @@
 # 2. Attach [`thin`](@ref) and [`cumulative`](@ref) to a daily-count series and
 #    check they leave the distribution itself untouched.
 # 3. Use the generic [`series_transform`](@ref) for an arbitrary series map.
-# 4. Modify a hazard through the `log` and `identity` links.
+# 4. Modify a hazard through the `log` and `identity` links, a general `logit`
+#    link with callable effects, and a per-bin effect on a discrete base.
 # 5. Peel a nested stack back to its base distribution.
 #
 # ### What might I need to know before starting
@@ -178,6 +180,39 @@ t = 1.0
 
 (sample_mean = mean(rand(prop, 10_000)), cdf_at_2 = cdf(add, 2.0))
 
+# ## General links and time-varying effects
+#
+# Any other link routes through numeric cumulative-hazard integration rather
+# than a closed form, so a `logit` link (or any invertible callable from
+# [`hazard_link`](@ref)) works on a continuous base. A constant callable
+# effect matches the equivalent scalar effect.
+
+logit_scalar = modify(hazard_base, 0.3; link = :logit)
+logit_callable = modify(hazard_base, t -> 0.3; link = :logit)
+(scalar = cdf(logit_scalar, 1.0), callable = cdf(logit_callable, 1.0))
+
+# The effect can also vary with `t`. A time-increasing effect speeds events up
+# more at longer times.
+
+ramping = modify(hazard_base, t -> 0.1 * t; link = :logit)
+(cdf_at_1 = cdf(ramping, 1.0), cdf_at_3 = cdf(ramping, 3.0))
+
+# ## Per-bin reporting hazard on a discrete base
+#
+# On a discrete base the effect is a per-bin vector: each delay bin's hazard is
+# reshaped on the link scale and the PMF reconstructed, the epinowcast
+# reporting-hazard layer. The reconstructed PMF sums to one. (The
+# reference-by-report expected-count matrix layer stays in
+# CensoredDistributions.jl.)
+
+grid = 0:6
+base_pmf = pdf.(Poisson(2.0), grid)
+base_pmf = base_pmf ./ sum(base_pmf)
+discrete = DiscreteNonParametric(collect(grid), base_pmf)
+report = modify(discrete, collect(range(-0.4, 0.4; length = length(grid)));
+    link = :logit)
+(pmf_total = sum(pdf(report, Float64(b)) for b in grid), pmf_0 = pdf(report, 0.0))
+
 # ## Unwrapping a nested stack
 #
 # The modifiers nest, and the [`get_dist`](@ref) protocol peels them back off.
@@ -200,6 +235,8 @@ get_dist_recursive(stack)
 #   transparent to every distribution method and act only on a downstream
 #   series.
 # - [`modify`](@ref) scales a survival curve (`log` link) or adds a constant
-#   hazard (`identity` link) in closed form.
+#   hazard (`identity` link) in closed form, and routes any other link, a
+#   callable `effect(t)`, or a per-bin vector effect on a discrete base through
+#   numeric integration or exact per-bin reconstruction.
 # - [`get_dist`](@ref) / [`get_dist_recursive`](@ref) recover the wrapped
 #   distribution from any depth of nesting.

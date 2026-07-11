@@ -112,7 +112,8 @@ function _primal_distribution(d::Affine)
 end
 
 function _primal_distribution(d::Modified)
-    return Modified(_primal_distribution(d.dist), _primal(d.effect), d.link)
+    return Modified(_primal_distribution(d.dist), _primal(d.effect), d.link,
+        d.method)
 end
 
 # --- 3. AD-safe survival family for Modified --------------------------------
@@ -131,12 +132,21 @@ end
 
 # Identity link (additive hazards): the extra hazard accrues from the
 # support minimum `m`, so logS* = logS - effect * (x - m) above `m` and
-# survival stays at one at or below it.
+# survival stays at one at or below it. A negative effect uses the clamped
+# numeric survival, which has no base-AD-safe closed form, so it falls back
+# to the package's own (correct) `logccdf`.
 function _logccdf_ad_safe(d::_IdentityModified, x::Real)
+    d.effect < zero(d.effect) && return Distributions.logccdf(d, x)
     m = minimum(d.dist)
     x <= m && return zero(float(typeof(x)))
     return _logccdf_ad_safe(d.dist, x) - d.effect * (x - m)
 end
+
+# General-link / discrete / callable-effect Modified has no base-AD-safe
+# closed-form survival, so route the AD-safe survival through the package's
+# own `logccdf` (numerically correct; it just does not lift the base's
+# AD-safe survival helper). Keeps a convolved general-link Modified evaluable.
+_logccdf_ad_safe(d::Modified, x::Real) = Distributions.logccdf(d, x)
 
 # The cdf/ccdf/logcdf variants the convolution paths call, all derived
 # from the AD-safe log-survival exactly as the public `Modified` methods

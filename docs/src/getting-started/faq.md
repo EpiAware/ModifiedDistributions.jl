@@ -56,11 +56,14 @@ Yes.
 Each modifier is a thin wrapper around whatever you pass it, so `weight(affine(d; scale = 2), 10)` and `affine(weight(d, 10); scale = 2)` both work.
 Order matters for meaning, not validity: modify the distribution first, then weight the resulting likelihood term, unless you have a reason to do otherwise.
 
-## Why does `modify` reject my discrete distribution or negative additive effect?
+## Which hazard modifications does `modify` support?
 
-The hazard-modification maths implemented here is the closed-form continuous path.
-The discrete (interval-censored) path lives upstream in [CensoredDistributions.jl](https://github.com/EpiAware/CensoredDistributions.jl), where the interval types live.
-Negative additive effects need hazard clamping and numeric integration of the cumulative hazard (see CensoredDistributions#670) — not yet ported; use the `log` link for hazard reductions (`modify(d, -0.5)` with the default link scales the hazard by `exp(-0.5)`).
+The `log` link (proportional hazards) and the `identity` link with a non-negative effect use closed forms.
+Any other link (`:logit` or an invertible callable from [`hazard_link`](@ref)), a negative additive effect, or a callable `effect(t)` on a continuous base routes through numeric cumulative-hazard integration.
+A discrete base takes a per-bin vector effect and reconstructs the modified PMF exactly through the discrete-time reporting hazard, for any link.
+
+The epinowcast reference-by-report expected-count matrix layer (and the interval-censoring discretisation it needs) stays upstream in [CensoredDistributions.jl](https://github.com/EpiAware/CensoredDistributions.jl).
+The numeric path differentiates under ForwardDiff for bases with a ForwardDiff-safe survival (`LogNormal`, `Weibull`); a `Gamma` base on the numeric path needs the AD-safe gamma survival that lives upstream.
 
 ## Does this work with composed distribution chains?
 
