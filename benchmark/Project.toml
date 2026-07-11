@@ -33,7 +33,9 @@ EpiAwarePackageTools = {url = "https://github.com/EpiAware/EpiAwarePackageTools.
 # ConvolvedDistributions are unregistered, so both are pinned by git.
 # ConvolvedDistributions must be a direct dep here because `[sources]`
 # entries only apply to the active project's direct dependencies.
-ComposedDistributions = {url = "https://github.com/EpiAware/ComposedDistributions.jl", rev = "main"}
+# TEMPORARY: ComposedDistributions main still caps ConvolvedDistributions at
+# 0.1; pin its 0.2-adoption branch (#136). Revert to rev = "main" after #136 merges.
+ComposedDistributions = {url = "https://github.com/EpiAware/ComposedDistributions.jl", rev = "fix/convolved-0.2-compat"}
 ConvolvedDistributions = {url = "https://github.com/EpiAware/ConvolvedDistributions.jl", rev = "main"}
 
 [compat]

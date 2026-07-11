@@ -51,14 +51,16 @@ report = LogNormal(0.5, 0.4)
 total = convolved(onset, report)
 (total_mean = mean(total), stage_sum = mean(onset) + mean(report))
 
-# With a numeric series as the second argument, `convolve_series`
-# instead discretises the delay to a daily PMF and convolves the series
-# with it.
+# A continuous total delay carries no mass on the integer day grid until it
+# is discretised, and ConvolvedDistributions 0.2 leaves that explicit
+# modelling choice to the caller: `discretise_pmf` turns the total into a
+# daily PMF, which `convolve_series` then convolves with the series.
 # Feeding it an expected-infections curve gives the expected reported
 # counts each day.
 
 infections = [0.0, 10.0, 40.0, 90.0, 120.0, 100.0, 60.0, 30.0, 12.0, 4.0]
-reported = convolve_series(total, infections)
+reported = convolve_series(
+    discretise_pmf(total, length(infections) - 1), infections)
 reported
 
 # ## Thinning the convolved counts (ascertainment)

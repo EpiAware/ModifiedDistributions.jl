@@ -1,5 +1,7 @@
 ## Unreleased
 
+- **Breaking (upstream-driven):** adopt ConvolvedDistributions 0.2, which makes the bare-distribution `convolve_series(delay, series)` discrete-only — a continuous delay now throws, because discretising it is an explicit modelling choice (single- vs double-interval censoring) upstream will not make silently. The ConvolvedDistributions extension's `convolve_series` methods (forward-transformed and other modified delays) preserve their behaviour by discretising the inner continuous delay with the interval-censored-secondary scheme (`discretise_pmf`) before convolving, so the modifier counts are unchanged; a bare continuous delay must now be discretised by the caller (`convolve_series(discretise_pmf(delay, maxlag), series)`). The `interval` kwarg now flows to `discretise_pmf` (a non-unit width discretises on that grid) rather than being rejected. Compat bumped to `0.2`.
+
 This file tracks notes for major releases and significant milestones; GitHub Releases (auto-generated from merged PRs) cover every release in between.
 
 ## v0.1.0 - Initial release

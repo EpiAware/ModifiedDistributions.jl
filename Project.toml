@@ -19,7 +19,7 @@ ModifiedDistributionsConvolvedDistributionsExt = "ConvolvedDistributions"
 
 [compat]
 ComposedDistributions = "0.1"
-ConvolvedDistributions = "0.1"
+ConvolvedDistributions = "0.2"
 Distributions = "0.25"
 DocStringExtensions = "0.9"
 Random = "1"
