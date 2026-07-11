@@ -94,6 +94,10 @@ end
 @testitem "Composed extension: modify collapses a Sequential chain" begin
     using Distributions
     using ComposedDistributions
+    # Loading ComposedDistributions pulls in ConvolvedDistributions (its own
+    # dependency), so the numeric hazard path used by the callable effect below
+    # is available; name it explicitly for the solver keyword.
+    using ConvolvedDistributions
 
     seq = sequential(:onset_admit => Gamma(2.0, 1.0),
         :admit_death => LogNormal(0.5, 0.4))
@@ -111,8 +115,42 @@ end
     @test mi isa ModifiedDistributions.Modified
     @test logpdf(mi, x) ≈ logpdf(modify(obs, 0.2; link = identity), x)
 
+    # A callable effect threads through and takes the numeric path on the
+    # collapsed total, matching modify of the observed total directly.
+    mc = modify(seq, t -> 0.1; link = :logit)
+    @test mc isa ModifiedDistributions.Modified
+    @test logpdf(mc, x) ≈ logpdf(modify(obs, t -> 0.1; link = :logit), x)
+
+    # The solver keyword threads through too (parity with core modify).
+    ms = modify(seq, 0.3; link = :logit,
+        method = ConvolvedDistributions.GaussLegendre(; n = 64))
+    @test isfinite(logpdf(ms, x))
+
     # nothing threads through unchanged, mirroring weight/thin.
     @test modify(seq, nothing) === seq
+end
+
+@testitem "Composed extension: multivariate composers reject modifiers" begin
+    using Distributions
+    using ComposedDistributions
+
+    # Parallel and Choose are multivariate with no single observed scalar, so
+    # every modifier verb throws a guided ArgumentError (not a bare
+    # MethodError), mirroring observed_distribution's rejection.
+    par = parallel(:onset_admit => Gamma(2.0, 1.0),
+        :onset_death => LogNormal(0.5, 0.4))
+    cho = choose(:mild => Gamma(1.5, 1.0), :severe => Gamma(2.0, 1.5))
+
+    for d in (par, cho)
+        @test_throws ArgumentError affine(d; scale = 2.0)
+        @test_throws ArgumentError weight(d, 3.0)
+        @test_throws ArgumentError weight(d)
+        @test_throws ArgumentError thin(d, 0.5)
+        @test_throws ArgumentError cumulative(d)
+        @test_throws ArgumentError series_transform(d, s -> s)
+        @test_throws ArgumentError modify(d, 0.5)
+        @test_throws ArgumentError modify(d, 0.5; link = identity)
+    end
 end
 
 @testitem "Composed extension: batched scoring through a modified chain" begin
