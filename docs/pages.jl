@@ -29,10 +29,7 @@ pages = [
         "Contributing" => "developer/contributing.md",
         "Writing a new modifier" => "developer/extending.md",
         "Release process" => "developer/release-process.md",
-        "Developer FAQ" => "developer/faq.md",
-        # Maintainer-facing template-sync notes; the file stays under
-        # `getting-started/` on disk so inbound links keep resolving.
-        "Infrastructure and template sync" => "getting-started/infrastructure.md"
+        "Developer FAQ" => "developer/faq.md"
     ],
     "Release notes" => "release-notes.md"
 ]

@@ -118,7 +118,7 @@ thin(dist::UnivariateDistribution, ::Nothing) = dist
 
 Accumulate a distribution's forward count series.
 
-`cumulative(d)` is [`transform`](@ref) with a running-sum op intended for a
+`cumulative(d)` is [`series_transform`](@ref) with a running-sum op intended for a
 downstream count series, giving cumulative counts (cumulative incidence,
 cumulative deaths). Transparent to `logpdf`.
 

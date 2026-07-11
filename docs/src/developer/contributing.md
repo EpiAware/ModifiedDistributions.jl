@@ -48,8 +48,7 @@ ModifiedDistributions.jl/
     └── benchmarks.jl       # Benchmark suite definition
 ```
 
-Files carrying a `MANAGED by EpiAwarePackageTools.scaffold` header are owned by the shared kit and rewritten on every sync.
-See [Infrastructure and template sync](@ref infrastructure) for which files are managed and which are yours to edit.
+Files carrying a `MANAGED by EpiAwarePackageTools.scaffold` header are owned by the shared kit and rewritten on every sync; everything else (unit tests, the QA config values, the navigation tree, the README body) is yours to edit.
 
 ## Development commands
 

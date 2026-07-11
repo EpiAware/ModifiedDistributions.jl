@@ -15,8 +15,7 @@ For general Julia development setup, see [Getting started with Julia](@ref julia
 
 For common development questions, including how to run tests faster while iterating, see the [Developer FAQ](@ref developer-faq).
 
-This repository adopts shared configuration and test infrastructure from [EpiAwarePackageTools](https://github.com/EpiAware/EpiAwarePackageTools.jl).
-The [Infrastructure and template sync](@ref infrastructure) page explains which files are managed and how they stay current.
+This repository adopts shared configuration and test infrastructure from [EpiAwarePackageTools](https://github.com/EpiAware/EpiAwarePackageTools.jl); files with a `MANAGED by EpiAwarePackageTools.scaffold` header are kept current by a scheduled template-sync workflow.
 
 ---
 
