@@ -300,6 +300,26 @@ end
     end
 end
 
+@testitem "Modified defective-law quantile throws cleanly" begin
+    using Distributions
+
+    # A negative additive effect clamps the early hazard of a LogNormal (whose
+    # hazard peaks then decays), leaving the modified law sub-stochastic: its
+    # cdf converges below one, so a high-probability quantile is undefined and
+    # must throw rather than return a garbage bracket (previously ~5e18).
+    d = modify(LogNormal(1.5, 0.5), -0.4; link = identity)
+    # The cdf plateaus at the (small) total mass well before x = 50.
+    total = cdf(d, 50.0)
+    @test 0.0 < total < 1.0                 # defective / sub-stochastic
+    @test_throws ArgumentError quantile(d, 0.99)
+    @test_throws ArgumentError quantile(d, min(total + 0.05, 0.999))
+
+    # Below the total mass the quantile is still well defined and round-trips
+    # against the same (quadrature-consistent) cdf.
+    plo = total / 2
+    @test cdf(d, quantile(d, plo))≈plo atol=1e-6
+end
+
 @testitem "Modified callable effect on the numeric path" begin
     using Distributions
 

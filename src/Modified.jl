@@ -226,7 +226,11 @@ The instantiation path is chosen by dispatch on the base and the link:
   ``S^{*}(t) = S(t)\\,e^{-\\beta (t - m)}``;
 - continuous base, any other link (or a negative additive effect, or a callable
   `effect(t)`): numeric, integrating the modified cumulative hazard through the
-  `method` quadrature solver;
+  `method` quadrature solver. The integrator assumes an eventually-monotone
+  hazard, and a negative additive (or general-link) effect clamps the hazard at
+  zero — for a base with a non-monotone (peak-then-decay) hazard the clamp can
+  make the modified law defective (sub-stochastic, integrating to less than
+  one), in which case `quantile`/`rand` above the total mass are undefined;
 - discrete base with a per-bin effect vector: exact per-bin PMF reconstruction
   through the discrete-time reporting hazard.
 
@@ -301,6 +305,19 @@ discrete-time reporting hazard, for any link including a user callable.
 
 The non-negative `identity` link also requires a base with a finite lower
 support bound `m` (the extra hazard accrues from `m`).
+
+The numeric path assumes an eventually-monotone base hazard. A negative
+additive (or general-link) effect clamps the modified hazard at zero, so for a
+base with a non-monotone (peak-then-decay) hazard the clamped law can be
+defective (sub-stochastic, integrating to less than one); its `cdf` stays
+monotone, but `quantile`/`rand` above the total mass throw an `ArgumentError`.
+
+Differentiating a modified law through the base parameters uses the base's own
+`logccdf`. `LogNormal` and `Weibull` bases differentiate under ForwardDiff on
+both the closed-form and numeric paths; a `Gamma` base does not, because
+`StatsFuns` has no AD rule for its log-survival — differentiating the `effect`
+alone still works, and the AD-safe gamma survival stays upstream in
+CensoredDistributions.
 
 # Arguments
 - `d`: the base distribution.
@@ -701,6 +718,13 @@ The log link keeps its closed form; the additive and numeric paths invert the
 monotone cdf by bracketed bisection, so a hazard increase (a tighter law) and a
 hazard decrease (a wider law) are both handled.
 
+A negative additive effect (and a general link) can push the modified hazard
+below zero, so the model is the clamped hazard `max(h(t) + β, 0)`. Clamping
+away early hazard can leave a base with a non-monotone (peak-then-decay) hazard
+sub-stochastic: the cumulative distribution converges to a total mass below
+one. When the requested `p` exceeds that total mass the quantile is undefined,
+so this throws an `ArgumentError` rather than returning a garbage bracket.
+
 See also: [`cdf`](@ref)
 "
 function quantile(d::_ContinuousModified, p::Real)
@@ -711,13 +735,25 @@ function quantile(d::_ContinuousModified, p::Real)
     lo = float(max(minimum(d), zero(float(p))))
     hi = float(quantile(d.dist, p))
     hi <= lo && (hi = lo + one(lo))
-    # Expand the upper bracket until it covers p (a hazard decrease widens the
-    # law past the base quantile).
-    for _ in 1:60
-        cdf(d, hi) >= p && break
-        hi = lo + 2 * (hi - lo)
-        isfinite(hi) || break
+    # Cap the search bracket at an extreme quantile of the base. The modified
+    # law's mass sits within the base's support scale — a hazard increase only
+    # tightens it, and the clamped negative-additive / general-link law is
+    # concentrated there and can be defective — so a cdf that has not reached
+    # `p` by this cap means `p` exceeds the law's total mass. The cap also keeps
+    # the bracket from wandering out to a span where the fixed-node quadrature
+    # is unreliable and would return a garbage quantile.
+    hicap = float(quantile(d.dist, 1 - 1e-12))
+    (isfinite(hicap) && hicap > lo) || (hicap = float(maximum(d)))
+    isfinite(hicap) || (hicap = lo + (hi - lo) * 2.0^20)
+    while hi < hicap && cdf(d, hi) < p
+        hi = min(hicap, lo + 2 * (hi - lo))
     end
+    cdf(d, hi) >= p || throw(ArgumentError(
+        "the modified law is defective (sub-stochastic) for this effect and " *
+        "base: its total probability mass is below $(p), so the $(p)-quantile " *
+        "is undefined. A negative additive (or general-link) effect clamps the " *
+        "early hazard and can leave a base with a non-monotone hazard " *
+        "integrating to less than one."))
     while true
         mid = (lo + hi) / 2
         (mid == lo || mid == hi) && break
