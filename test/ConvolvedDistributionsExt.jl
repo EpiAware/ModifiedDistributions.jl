@@ -36,7 +36,9 @@ end
 
     delay = Gamma(2.0, 1.0)
     series = [0.0, 5.0, 12.0, 20.0, 15.0, 8.0, 3.0]
-    baseline = convolve_series(delay, series)
+    # ConvolvedDistributions 0.2 is discrete-only, so a bare continuous delay
+    # is discretised explicitly; the modifier convenience does this internally.
+    baseline = convolve_series(discretise_pmf(delay, length(series) - 1), series)
 
     # thin: the factor multiplies the unthinned baseline counts.
     thinned = convolve_series(thin(delay, 0.3), series)
@@ -58,14 +60,17 @@ end
     # thin wrapping a Convolved total delay: the inner convolution's
     # discretised PMF drives the counts, then the thin factor applies.
     total = convolved(Gamma(2.0, 1.0), LogNormal(0.5, 0.4))
-    total_counts = convolve_series(total, series)
+    total_counts = convolve_series(
+        discretise_pmf(total, length(series) - 1), series)
     @test convolve_series(thin(total, 0.3), series) ≈
           0.3 .* total_counts
 
-    # The kwarg mirrors the upstream vector method: a non-unit interval is
-    # rejected by the inner call.
-    @test_throws ArgumentError convolve_series(
-        thin(delay, 0.3), series; interval = 2)
+    # The interval kwarg flows through to discretise_pmf: a non-unit width
+    # discretises the inner delay on that grid (ConvolvedDistributions 0.2
+    # removed the unit-only restriction rather than rejecting it).
+    @test convolve_series(thin(delay, 0.3), series; interval = 2) ≈
+          0.3 .* convolve_series(
+        discretise_pmf(delay, length(series) - 1; interval = 2), series)
 end
 
 @testitem "Convolved extension: modifiers as convolution components" begin
@@ -272,7 +277,7 @@ end
     # Outermost ops peel correctly even over a modified inner delay: the
     # weight only touches logpdf, so the convolved counts match the
     # unweighted inner delay's, accumulated.
-    baseline = convolve_series(delay, series)
+    baseline = convolve_series(discretise_pmf(delay, length(series) - 1), series)
     counts = convolve_series(cumulative(weight(delay, 3.0)), series)
     (accumulated = counts, expected = cumsum(baseline))
     @test counts ≈ cumsum(baseline)

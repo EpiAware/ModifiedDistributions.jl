@@ -36,7 +36,7 @@ module ModifiedDistributionsConvolvedDistributionsExt
 import ConvolvedDistributions: convolve_series, _primal_distribution,
                                _cdf_ad_safe, _ccdf_ad_safe, _logcdf_ad_safe,
                                _logccdf_ad_safe
-using ConvolvedDistributions: _primal
+using ConvolvedDistributions: _primal, discretise_pmf
 using ModifiedDistributions: AbstractModifiedDistribution, Affine, Modified,
                              Transformed, Weighted, get_dist,
                              _peel_forward, _apply_forward_ops, _log1mexp,
@@ -50,29 +50,45 @@ using Distributions: Distributions, pdf, cdf
 # Convolving a forward-transformed delay with a numeric series: peel the
 # forward ops off the wrapper, convolve the inner delay's discretised PMF
 # with the series, then apply the ops (innermost first) to the resulting
-# counts. Mirrors the upstream vector-method signature; the `interval`
-# keyword is validated by the inner call.
+# counts. ConvolvedDistributions 0.2 makes the bare-distribution
+# `convolve_series` discrete-only (discretising a continuous delay is an
+# explicit modelling choice it will not make silently), so the inner
+# continuous delay is discretised here with the interval-censored-secondary
+# scheme (`discretise_pmf`) — the same CDF-difference masses the pre-0.2 path
+# used, so the modifier counts are unchanged.
 function convolve_series(
         delay::Transformed, series::AbstractVector{<:Real};
         interval = 1)
     inner, ops = _peel_forward(delay)
     _check_no_buried_forward_op(inner)
-    counts = convolve_series(inner, series; interval)
+    counts = _convolve_delay_series(inner, series, interval)
     return _apply_forward_ops(counts, ops)
 end
 
-# A forward op buried under another modifier (e.g. weight(cumulative(d)))
-# cannot be peeled without a generic rewrap protocol, and silently
-# convolving the wrapper would drop the op. Reject with guidance: forward
-# ops go outermost.
+# A non-forward modifier (`weight` / `affine` / `modify`) only reshapes the
+# delay's density / CDF, so convolving its series is convolving the modified
+# delay's own discretised PMF. A forward op buried under it cannot be peeled
+# without a generic rewrap protocol, and silently convolving the wrapper
+# would drop the op, so that is rejected with guidance (forward ops go
+# outermost).
 function convolve_series(
         delay::AbstractModifiedDistribution, series::AbstractVector{<:Real};
         interval = 1)
     _check_no_buried_forward_op(delay)
-    return invoke(convolve_series,
-        Tuple{Distributions.UnivariateDistribution,
-            AbstractVector{<:Real}},
-        delay, series; interval)
+    return _convolve_delay_series(delay, series, interval)
+end
+
+# Discretise a continuous delay to its interval-censored-secondary PMF and
+# convolve the series with it. ConvolvedDistributions 0.2 no longer
+# discretises a continuous delay inside `convolve_series` (it is
+# discrete-only), so the modifier convenience does it here; the
+# CDF-difference masses over lags `0:(length(series) - 1)` are exactly the
+# pre-0.2 discretisation, so the counts are unchanged. `delay` is a plain
+# delay or a non-forward modifier wrapper, whose own CDF drives the masses.
+function _convolve_delay_series(
+        delay, series::AbstractVector{<:Real}, interval)
+    pmf = discretise_pmf(delay, length(series) - 1; interval = interval)
+    return convolve_series(pmf, series)
 end
 
 function _check_no_buried_forward_op(d)
