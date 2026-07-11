@@ -183,3 +183,21 @@ end
         @test isapprox(mean(ys .<= q), cdf(di, q); atol = 0.015)
     end
 end
+
+@testitem "Modified batched vector observations" begin
+    using Distributions
+
+    xs = [0.5, 1.5, 3.0]
+
+    # Per-point results equal the scalar map on both analytic paths, with a
+    # stable eltype. A vector observation on a modifier is per-point (vector
+    # result), unlike the Product{Weighted} joint-scalar convention.
+    for d in (modify(LogNormal(1.5, 0.5), -log(2.0)),
+        modify(Exponential(1.0), 0.2; link = identity))
+        for f in (logpdf, pdf, cdf, logcdf, ccdf, logccdf)
+            batched = f(d, xs)
+            @test batched ≈ map(x -> f(d, x), xs)
+            @test batched isa Vector{Float64}
+        end
+    end
+end

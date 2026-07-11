@@ -96,6 +96,27 @@ wds_obs = weight(fill(base, 3))
 (product = logpdf(wds_obs, (values = values, weights = counts)),
     manual = sum(counts .* logpdf.(base, values)))
 
+# ### Per-point vector scoring on a single weighted distribution
+#
+# A plain vector passed to a single weighted distribution is scored per
+# point: each observation is evaluated separately and the result is a vector
+# of weighted log-densities, one entry per observation.
+# The whole batch reaches the base distribution together, so a base with a
+# batched `logpdf` (such as a convolved delay) is evaluated once for the
+# whole vector rather than once per point.
+
+logpdf(wd, values)
+
+# Each entry is the weight (25) times the base log-density at that point.
+
+25 .* logpdf.(base, values)
+
+# This is a different convention from the `Product` form above: there the
+# vector is one joint observation and `logpdf` returns a single scalar, the
+# weighted sum over components.
+
+logpdf(weight(base, fill(25, 3)), values)
+
 # ## Weighted distributions stay samplable
 #
 # The usual alternatives to `weight` in a probabilistic programming language

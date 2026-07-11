@@ -126,10 +126,10 @@ end
     @test mean(samples_d) ≈ mean(samples_wd) atol=0.1
     @test std(samples_d) ≈ std(samples_wd) atol=0.1
 
-    # sampler delegates but keeps the weight
+    # sampler delegates to the base sampler; the weight never touches
+    # sampling, and re-wrapping crashed for sampler-object bases.
     s = sampler(wd)
-    @test s isa ModifiedDistributions.Weighted
-    @test s.weight == w
+    @test s === sampler(d)
 end
 
 @testitem "Weighted with different numeric types" begin
@@ -569,4 +569,91 @@ end
 
     # Mismatched lengths error
     @test_throws ArgumentError weight(dists, [1.0, 2.0, 3.0])
+end
+
+@testitem "Weighted batched vector observations" begin
+    using Distributions
+
+    base = Normal(2.0, 1.0)
+    xs = [1.9, 2.1, 2.3]
+
+    # Per-point results equal the scalar map, with a stable eltype. A vector
+    # observation on a single Weighted is per-point (vector result), unlike
+    # the Product{Weighted} joint-scalar convention below.
+    wd = weight(base, 2.5)
+    batched = logpdf(wd, xs)
+    @test batched ≈ map(x -> logpdf(wd, x), xs)
+    @test batched isa Vector{Float64}
+    @test batched ≈ 2.5 .* logpdf.(base, xs)
+
+    # Missing and zero weights give -Inf elementwise, mirroring the scalar
+    # sentinel semantics.
+    wm = weight(base)
+    @test logpdf(wm, xs) == fill(-Inf, 3)
+    @test logpdf(wm, xs) isa Vector{Float64}
+    w0 = weight(base, 0.0)
+    @test logpdf(w0, xs) == fill(-Inf, 3)
+    @test logpdf(w0, xs) isa Vector{Float64}
+
+    # The Product{Weighted} convention is untouched: a vector observation
+    # there is one joint observation with a scalar result.
+    wp = weight(base, [2.0, 3.0, 4.0])
+    @test logpdf(wp, xs) isa Float64
+    @test logpdf(wp, xs) ≈ sum([2.0, 3.0, 4.0] .* logpdf.(base, xs))
+end
+
+@testitem "Weighted delegates a whole batch to the base distribution" begin
+    using Distributions
+
+    # A spy base distribution counting scalar vs batched logpdf calls. When
+    # the base declares a specialised batched logpdf, a vector observation
+    # must reach it as one batched call, never as a per-point fan-out.
+    struct SpyDist <: ContinuousUnivariateDistribution
+        dist::Normal{Float64}
+        nscalar::Base.RefValue{Int}
+        nvector::Base.RefValue{Int}
+    end
+    SpyDist() = SpyDist(Normal(2.0, 1.0), Ref(0), Ref(0))
+    function Distributions.logpdf(d::SpyDist, x::Real)
+        d.nscalar[] += 1
+        return logpdf(d.dist, x)
+    end
+    function Distributions.logpdf(d::SpyDist, x::AbstractVector{<:Real})
+        d.nvector[] += 1
+        return map(Base.Fix1(logpdf, d.dist), x)
+    end
+    function ModifiedDistributions._has_batched_method(
+            ::typeof(Distributions.logpdf), ::SpyDist)
+        return true
+    end
+
+    spy = SpyDist()
+    wd = weight(spy, 2.0)
+    logpdf(wd, [1.9, 2.1, 2.3])
+    @test spy.nscalar[] == 0
+    @test spy.nvector[] == 1
+end
+
+@testitem "batch sampling uses the base sampler" begin
+    using Distributions, Random
+
+    # Gamma and Poisson have dedicated sampler objects; re-wrapping them
+    # in Weighted crashed batch rand (pre-release review finding).
+    rng = MersenneTwister(7)
+    draws_gamma = rand(rng, weight(Gamma(2.0, 3.0), 3.0), 4)
+    draws_pois = rand(rng, weight(Poisson(4.0), 2.0), 4)
+    (gamma = draws_gamma, poisson = draws_pois)
+    @test length(draws_gamma) == 4
+    @test all(>(0), draws_gamma)
+    @test length(draws_pois) == 4
+    @test all(>=(0), draws_pois)
+end
+
+@testitem "scalar rand delegates to the base distribution" begin
+    using Distributions, Random
+
+    wd = weight(Gamma(2.0, 3.0), 5.0)
+    draw = rand(MersenneTwister(11), wd)
+    @test draw isa Real
+    @test draw > 0
 end

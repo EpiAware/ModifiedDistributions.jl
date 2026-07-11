@@ -142,6 +142,90 @@ See also: [`ccdf`](@ref)
 "
 logccdf(d::Affine, y::Real) = logccdf(d.dist, _affine_inv(d, y))
 
+# Batched observations. A vector observation on a modifier is per-point (the
+# result is a vector), unlike the Product{Weighted} joint-scalar convention.
+# The whole batch is transformed and handed to `_batched_eval`, which makes
+# one inner call when the inner distribution declares a specialised batched
+# method (e.g. a convolved distribution's single-solve quadrature) and a
+# per-point scalar map otherwise.
+
+@doc "
+
+Compute the log probability density for a vector of observations, per point.
+
+The whole transformed batch reaches the inner distribution in one call when
+it provides a batched `logpdf`, then the log-Jacobian `-log(scale)` applies
+elementwise (continuous inner distributions only). A vector observation on
+a modifier is per-point (a vector result), unlike the `Product{<:Weighted}`
+joint-scalar convention.
+
+See also: [`pdf`](@ref)
+"
+function logpdf(d::Affine, y::AbstractVector{<:Real})
+    return _batched_eval(logpdf, d.dist, _affine_inv.(Ref(d), y)) .-
+           log(d.scale)
+end
+
+# Discrete pmf batch: mass moves without the Jacobian, mirroring the scalar
+# discrete specialisation.
+function logpdf(d::Affine{<:UnivariateDistribution, <:Real, Discrete},
+        y::AbstractVector{<:Real})
+    return _batched_eval(logpdf, d.dist, _affine_inv.(Ref(d), y))
+end
+
+@doc "
+
+Compute the probability density for a vector of observations, per point
+(one batched inner call through the vector [`logpdf`](@ref)).
+
+See also: [`logpdf`](@ref)
+"
+pdf(d::Affine, y::AbstractVector{<:Real}) = exp.(logpdf(d, y))
+
+@doc "
+
+Compute the cumulative distribution function for a vector of observations,
+per point (a single batched inner call when available).
+
+See also: [`cdf`](@ref)
+"
+function cdf(d::Affine, y::AbstractVector{<:Real})
+    return _batched_eval(cdf, d.dist, _affine_inv.(Ref(d), y))
+end
+
+@doc "
+
+Compute the log cumulative distribution function for a vector of
+observations, per point (a single batched inner call when available).
+
+See also: [`logcdf`](@ref)
+"
+function logcdf(d::Affine, y::AbstractVector{<:Real})
+    return _batched_eval(logcdf, d.dist, _affine_inv.(Ref(d), y))
+end
+
+@doc "
+
+Compute the complementary cumulative distribution function for a vector of
+observations, per point (a single batched inner call when available).
+
+See also: [`ccdf`](@ref)
+"
+function ccdf(d::Affine, y::AbstractVector{<:Real})
+    return _batched_eval(ccdf, d.dist, _affine_inv.(Ref(d), y))
+end
+
+@doc "
+
+Compute the log complementary cumulative distribution function for a vector
+of observations, per point (a single batched inner call when available).
+
+See also: [`logccdf`](@ref)
+"
+function logccdf(d::Affine, y::AbstractVector{<:Real})
+    return _batched_eval(logccdf, d.dist, _affine_inv.(Ref(d), y))
+end
+
 @doc "
 
 Compute the quantile function (inverse CDF).

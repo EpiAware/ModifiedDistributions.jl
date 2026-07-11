@@ -19,6 +19,12 @@ public AbstractModifiedDistribution
 public Affine
 public Weighted
 public Transformed
+# The forward-op types carried by thin/cumulative: public so downstream
+# packages (CensoredDistributions' convolution and reporting layers) can
+# dispatch on Transformed{D, <:ThinOp} and read ThinOp's factor field
+# without reaching into internals (#43).
+public ThinOp
+public CumulativeOp
 public Modified
 # The hazard-link machinery: `HazardLink` for dispatch, the named link
 # constants for explicit `link =` arguments, and `hazard_link` to wrap a

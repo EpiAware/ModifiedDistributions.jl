@@ -88,3 +88,13 @@ end
     nested = weight(affine(base; scale = 2.0), 1.5)
     @test typeof(get_dist_recursive(nested)) === typeof(base)
 end
+
+@testitem "recursive unwrap maps over product components" begin
+    using Distributions
+
+    wds = weight(Normal(2.0, 1.0), [2.0, 3.0])
+    unwrapped = get_dist_recursive(wds)
+    (components = unwrapped,)
+    @test unwrapped isa AbstractVector
+    @test all(c -> c isa Normal, unwrapped)
+end

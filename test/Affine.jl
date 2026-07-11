@@ -203,3 +203,74 @@ end
     @test isapprox(mean(xs), mean(d); atol = 0.05)
     @test isapprox(std(xs), sqrt(var(d)); atol = 0.05)
 end
+
+@testitem "Affine batched vector observations" begin
+    using Distributions
+
+    inner = LogNormal(1.5, 0.5)
+    d = affine(inner; scale = 2.0, shift = 1.0)
+    ys = [2.0, 3.5, 5.0, 8.0]
+
+    # Per-point results equal the scalar map, with a stable eltype. A vector
+    # observation on a modifier is per-point (vector result), unlike the
+    # Product{Weighted} joint-scalar convention.
+    for f in (logpdf, pdf, cdf, logcdf, ccdf, logccdf)
+        batched = f(d, ys)
+        @test batched ≈ map(y -> f(d, y), ys)
+        @test batched isa Vector{Float64}
+    end
+
+    # Discrete inner: mass moves without the Jacobian; off-lattice points
+    # score -Inf, mirroring the scalar discrete specialisation.
+    dd = affine(Poisson(3.0); scale = 2.0)
+    yd = [0.0, 2.0, 3.0, 4.0]
+    batched_d = logpdf(dd, yd)
+    @test batched_d ≈ map(y -> logpdf(dd, y), yd)
+    @test batched_d[2] ≈ logpdf(Poisson(3.0), 1.0)
+    @test batched_d[3] == -Inf
+end
+
+@testitem "Affine delegates a whole batch to the inner distribution" begin
+    using Distributions
+
+    # A spy inner distribution counting scalar vs batched calls. When the
+    # inner declares specialised batched methods (as a convolved
+    # distribution's single-solve quadrature does), a vector observation
+    # must reach it as one batched call, never as a per-point fan-out.
+    struct SpyDist <: ContinuousUnivariateDistribution
+        dist::LogNormal{Float64}
+        nscalar::Base.RefValue{Int}
+        nvector::Base.RefValue{Int}
+    end
+    SpyDist() = SpyDist(LogNormal(1.5, 0.5), Ref(0), Ref(0))
+    for f in (:pdf, :logpdf, :cdf, :logcdf, :ccdf, :logccdf)
+        @eval function Distributions.$f(d::SpyDist, x::Real)
+            d.nscalar[] += 1
+            return Distributions.$f(d.dist, x)
+        end
+        @eval function Distributions.$f(
+                d::SpyDist, x::AbstractVector{<:Real})
+            d.nvector[] += 1
+            return map(Base.Fix1(Distributions.$f, d.dist), x)
+        end
+    end
+    function ModifiedDistributions._has_batched_method(
+            ::typeof(Distributions.logpdf), ::SpyDist)
+        return true
+    end
+    for f in (:cdf, :logcdf, :ccdf, :logccdf)
+        @eval function ModifiedDistributions._has_batched_method(
+                ::typeof(Distributions.$f), ::SpyDist)
+            return true
+        end
+    end
+
+    spy = SpyDist()
+    d = affine(spy; scale = 2.0, shift = 1.0)
+    ys = [2.0, 3.5, 5.0]
+    for f in (logpdf, pdf, cdf, logcdf, ccdf, logccdf)
+        f(d, ys)
+    end
+    @test spy.nscalar[] == 0
+    @test spy.nvector[] == 6
+end

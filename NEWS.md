@@ -10,10 +10,12 @@ Built on the EpiAwarePackageTools scaffold: managed CI, DocumenterVitepress docs
 
 - Ported the `Affine` modifier from CensoredDistributions.jl: `affine(dist; scale, shift)` gives the exact change-of-variables distribution of `scale * X + shift`, including direct `ccdf`/`logccdf` (precise in the upper tail), summary statistics, and discrete-support handling (#10, #13).
 - Ported the `Weighted` modifier: `weight(dist, w)` scales `logpdf` by a weight for aggregated or count observations, with observation-time weights, vectorised `Product` forms, and delegated summary statistics (#10, #13).
-- Ported the `Transformed` forward-series modifier with `series_transform`/`thin`/`cumulative`, transparent to every distribution method; the generic verb is named `series_transform` so it cannot clash with `DataFrames.transform` (#10, #35).
+- Ported the `Transformed` forward-series modifier with `series_transform`/`thin`/`cumulative`, transparent to every distribution method; the generic verb is named `series_transform` so it cannot clash with `DataFrames.transform` (#10, #35, #38).
 - Added the generic `get_dist`/`get_dist_recursive` unwrap protocol, extendable by downstream wrapper packages (#10).
 - Added the `modify` hazard-modification verb: `Modified` transforms a continuous distribution's hazard through a link, with closed-form proportional-hazards (`log`, default) and additive-hazards (`identity`, non-negative effects, hazard accrued from the support minimum) paths. General links, negative additive effects, and the discrete path stay upstream in CensoredDistributions.jl (#12, #17).
-- Added a ComposedDistributions.jl package extension letting the modifier verbs apply across a composed `Sequential` chain by modifying its observed scalar (#14).
+- Added a ComposedDistributions.jl package extension letting the modifier verbs apply across a composed `Sequential` chain by modifying its observed scalar (#14, #41).
+- Added a ConvolvedDistributions.jl package extension: the forward-series transforms (`thin`/`cumulative`/`series_transform`) ride the convolved count series a convolution layer produces, modified distributions serve as convolution components through an AD-safe closed-form survival, and each wrapper reconstructs its own quadrature window (#41).
+- Added batched vector-observation evaluation: a `Convolved` component routes a whole batch of observations through a single quadrature solve via the batched-evaluation traits, while other inners keep exact per-point evaluation (#41).
 - Reinstated the `AbstractModifiedDistribution` supertype and interface contract shared with the CensoredDistributions hierarchy (#27).
 
 ### Documentation

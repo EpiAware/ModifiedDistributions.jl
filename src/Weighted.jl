@@ -245,15 +245,20 @@ function pdf(d::Weighted, x::Real)
     return pdf(get_dist(d), x)
 end
 
-# Weighted logpdf computation with validation. Missing or zero weights
-# short-circuit to `-Inf`, seeding the sentinel from the promoted
+# The `-Inf` sentinel for a missing or zero weight, seeded from the promoted
 # weight/distribution type so ForwardDiff Duals survive the zero-weight branch
 # without evaluating the underlying logpdf.
+function _weight_sentinel(dist, weight)
+    wtype = ismissing(weight) ? Bool : typeof(weight)
+    T = float(promote_type(wtype, eltype(dist)))
+    return oftype(zero(T), -Inf)
+end
+
+# Weighted logpdf computation with validation. Missing or zero weights
+# short-circuit to the `-Inf` sentinel.
 function _logpdf(dist, value, weight)
     if ismissing(weight) || weight == 0
-        wtype = ismissing(weight) ? Bool : typeof(weight)
-        T = float(promote_type(wtype, eltype(dist)))
-        return oftype(zero(T), -Inf)
+        return _weight_sentinel(dist, weight)
     end
     return weight * logpdf(dist, value)
 end
@@ -266,6 +271,27 @@ See also: [`pdf`](@ref)
 "
 function logpdf(d::Weighted, x::Real)
     return _logpdf(get_dist(d), x, d.weight)
+end
+
+@doc "
+
+Return the weighted log-probability for a vector of observations, per point.
+
+The whole batch reaches the base distribution in one `logpdf` call when it
+provides a batched implementation, then the weight applies elementwise with
+the scalar missing/zero-weight sentinel semantics (`-Inf` per point,
+AD-safe promoted eltype). A vector observation on a single `Weighted` is
+per-point (a vector result), unlike the `Product{<:Weighted}` joint-scalar
+convention.
+
+See also: [`pdf`](@ref)
+"
+function logpdf(d::Weighted, x::AbstractVector{<:Real})
+    w = d.weight
+    if ismissing(w) || w == 0
+        return fill(_weight_sentinel(get_dist(d), w), length(x))
+    end
+    return w .* _batched_eval(logpdf, get_dist(d), x)
 end
 
 @doc "
@@ -314,11 +340,13 @@ function _weighted_base_logpdfs(components, values)
     return logpdf(shared, collect(values))
 end
 
-# Whether a distribution provides a specialised, value-identical batched
+# Whether a distribution provides a specialised batched
 # `logpdf(d, ::AbstractVector{<:Real})` worth a single vectorised call. No plain
 # distribution does; a downstream package may add a method for a type that
-# caches shared work across a batch of observations.
-_has_batched_logpdf(::UnivariateDistribution) = false
+# caches shared work across a batch of observations. Also feeds the modifier
+# leaves' batched observation methods through `_has_batched_method` /
+# `_batched_eval` (see interface.jl).
+_has_batched_logpdf(d::UnivariateDistribution) = _has_batched_method(logpdf, d)
 
 # The single underlying distribution shared by every `Weighted` component, or
 # `nothing` when they are not all the same object. Identity (`===`) keeps the
@@ -461,6 +489,15 @@ function logccdf(d::Weighted, x::Real)
     return logccdf(get_dist(d), x)
 end
 
+# Vector observations delegate the whole batch to the base distribution
+# (the weight only touches `logpdf`), taking a single batched call when
+# the base provides one. Per-point results, unlike Product{<:Weighted}.
+for f in (:pdf, :cdf, :logcdf, :ccdf, :logccdf)
+    @eval function Distributions.$f(d::Weighted, x::AbstractVector{<:Real})
+        return _batched_eval(Distributions.$f, get_dist(d), x)
+    end
+end
+
 @doc "
 
 Compute the quantile function (delegates to underlying distribution).
@@ -485,7 +522,11 @@ Create a sampler for efficient sampling (delegates to underlying distribution).
 
 See also: [`rand`](@ref)
 "
-sampler(d::Weighted) = Weighted(sampler(get_dist(d)), d.weight)
+# The weight never touches sampling, so batch sampling uses the base
+# distribution's specialised sampler directly. Re-wrapping it in `Weighted`
+# would crash for bases whose sampler is a dedicated sampler object rather
+# than a distribution (Gamma, Poisson).
+sampler(d::Weighted) = sampler(get_dist(d))
 
 # Helper functions for observation and weight processing.
 
