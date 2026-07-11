@@ -37,6 +37,10 @@ Sampling delegates to the base while only the likelihood contribution is scaled,
 The distribution itself is unchanged — `logpdf`, `rand`, `cdf` and everything else delegate to the inner distribution.
 If you want thinning that changes the density, that is a different operation and lives with the convolution layer that owns the series.
 
+When a forward-transformed delay is convolved with a count series through ConvolvedDistributions' `convolve_series`, the inner delay must be discrete.
+`convolve_series` will not implicitly discretise a continuous delay (the discretisation scheme is a modelling choice), so discretise it first with `discretise_pmf` and wrap the daily masses (for example in a `DiscreteNonParametric`) before attaching the forward op.
+See the [Convolving modified distributions](@ref convolved-modifiers) tutorial.
+
 ## What is the difference between `get_dist` and `get_dist_recursive`?
 
 `get_dist` removes one layer of wrapping; `get_dist_recursive` keeps unwrapping until it reaches a distribution with no more layers:

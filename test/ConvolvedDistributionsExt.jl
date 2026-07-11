@@ -34,7 +34,10 @@ end
     using Distributions
     using ConvolvedDistributions
 
-    delay = Gamma(2.0, 1.0)
+    # ConvolvedDistributions convolves a discrete delay directly, so the
+    # forward-op handshake wraps a discrete delay. (A continuous delay must be
+    # discretised first; see the continuous-delay test below.)
+    delay = Poisson(3.0)
     series = [0.0, 5.0, 12.0, 20.0, 15.0, 8.0, 3.0]
     baseline = convolve_series(delay, series)
 
@@ -54,18 +57,30 @@ end
     # A custom series_transform op applies through the same hook.
     shifted = series_transform(delay, s -> s .+ 1.0)
     @test convolve_series(shifted, series) ≈ baseline .+ 1.0
+end
 
-    # thin wrapping a Convolved total delay: the inner convolution's
-    # discretised PMF drives the counts, then the thin factor applies.
-    total = convolved(Gamma(2.0, 1.0), LogNormal(0.5, 0.4))
-    total_counts = convolve_series(total, series)
-    @test convolve_series(thin(total, 0.3), series) ≈
-          0.3 .* total_counts
+@testitem "Convolved extension: continuous delay needs discretising" begin
+    using Distributions
+    using ConvolvedDistributions
 
-    # The kwarg mirrors the upstream vector method: a non-unit interval is
-    # rejected by the inner call.
+    series = [0.0, 5.0, 12.0, 20.0, 15.0, 8.0, 3.0]
+    n = length(series)
+
+    # Wrapping a continuous delay surfaces ConvolvedDistributions' own
+    # discretise-first ArgumentError rather than a silent guess: the handshake
+    # peels the forward op and hands the continuous inner straight to
+    # convolve_series, which refuses to discretise it.
     @test_throws ArgumentError convolve_series(
-        thin(delay, 0.3), series; interval = 2)
+        thin(Gamma(2.0, 1.0), 0.3), series)
+
+    # The supported ordering: discretise the continuous delay first (here into a
+    # DiscreteNonParametric), then wrap and thin like any discrete delay.
+    pmf = discretise_pmf(Gamma(2.0, 1.0), n - 1)
+    masses = collect(pmf.masses)
+    disc = DiscreteNonParametric(collect(0:(n - 1)), masses ./ sum(masses))
+    disc_baseline = convolve_series(disc, series)
+    @test convolve_series(thin(disc, 0.3), series) ≈ 0.3 .* disc_baseline
+    @test convolve_series(cumulative(disc), series) ≈ cumsum(disc_baseline)
 end
 
 @testitem "Convolved extension: modifiers as convolution components" begin
@@ -185,13 +200,13 @@ end
 
     series = [0.0, 5.0, 12.0, 20.0, 15.0, 8.0, 3.0]
 
-    # Series handshake: gradient through the thinned convolved counts
-    # w.r.t. the Gamma shape and scale.
-    f1 = θ -> sum(convolve_series(
-        thin(Gamma(θ[1], θ[2]), 0.3), series))
-    g1 = ForwardDiff.gradient(f1, [2.0, 1.0])
+    # Series handshake: gradient through the thinned convolved counts of a
+    # discrete delay w.r.t. its rate (a continuous delay would need
+    # discretising first; the convolution stays linear either way).
+    f1 = θ -> sum(convolve_series(thin(Poisson(θ[1]), 0.3), series))
+    g1 = ForwardDiff.gradient(f1, [3.0])
     @test all(isfinite, g1)
-    @test g1 ≈ fdgrad(f1, [2.0, 1.0]) rtol=1e-5
+    @test g1 ≈ fdgrad(f1, [3.0]) rtol=1e-5
 
     # CDF of a Convolved with an affine component: gradient through the
     # inner LogNormal params and the affine scale and shift.
@@ -258,7 +273,9 @@ end
     using Distributions
     using ConvolvedDistributions
 
-    delay = Gamma(2.0, 1.0)
+    # A discrete delay so convolve_series is valid; the guard fires on the
+    # buried op regardless of the base support.
+    delay = Poisson(3.0)
     series = [0.0, 5.0, 12.0, 20.0, 15.0]
 
     # A forward op wrapped inside another modifier cannot reach the series

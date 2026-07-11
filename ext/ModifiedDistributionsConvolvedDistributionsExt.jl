@@ -16,6 +16,15 @@
 #    series a convolution layer produces. When such a wrapper is handed a
 #    numeric series, the ops are peeled off, the inner delay is convolved
 #    with the series, and the ops are applied to the resulting counts.
+#    ConvolvedDistributions convolves a DISCRETE inner delay directly and
+#    refuses a continuous one (a continuous delay carries no integer-lag mass
+#    until discretised), so the supported shape wraps a discrete delay:
+#    `thin(dist::DiscreteUnivariateDistribution, p)`. For a continuous delay,
+#    discretise first with `discretise_pmf` (e.g. into a `DiscreteNonParametric`
+#    to wrap, or convolve the resulting `DelayPMF` directly and apply the
+#    forward op to the counts); wrapping a continuous delay surfaces
+#    ConvolvedDistributions' own discretise-first error rather than a silent
+#    guess.
 # 2. Quadrature window reconstruction. ConvolvedDistributions picks finite
 #    integration windows from a quantile of an AD-stripped (primal) copy of
 #    a component. Its generic rebuild goes through the type's positional
@@ -52,36 +61,40 @@ using ModifiedDistributions: AbstractModifiedDistribution, Affine, Modified,
 import ModifiedDistributions: _has_batched_method, _numeric_logccdf,
                               _numeric_logpdf
 using ConvolvedDistributions: Convolved
-using Distributions: Distributions, pdf, cdf, logpdf, logccdf
+using Distributions: Distributions, pdf, cdf, logpdf, logccdf,
+                     DiscreteUnivariateDistribution,
+                     ContinuousUnivariateDistribution
 
 # --- 1. The series handshake -----------------------------------------------
 
 # Convolving a forward-transformed delay with a numeric series: peel the
-# forward ops off the wrapper, convolve the inner delay's discretised PMF
-# with the series, then apply the ops (innermost first) to the resulting
-# counts. Mirrors the upstream vector-method signature; the `interval`
-# keyword is validated by the inner call.
-function convolve_series(
-        delay::Transformed, series::AbstractVector{<:Real};
-        interval = 1)
+# forward ops off the wrapper, convolve the inner delay with the series, then
+# apply the ops (innermost first) to the resulting counts. The inner convolution
+# routes to ConvolvedDistributions' own dispatch, so a discrete inner convolves
+# and a continuous inner surfaces its discretise-first error (see the header).
+function convolve_series(delay::Transformed, series::AbstractVector{<:Real})
     inner, ops = _peel_forward(delay)
     _check_no_buried_forward_op(inner)
-    counts = convolve_series(inner, series; interval)
+    counts = convolve_series(inner, series)
     return _apply_forward_ops(counts, ops)
 end
 
 # A forward op buried under another modifier (e.g. weight(cumulative(d)))
-# cannot be peeled without a generic rewrap protocol, and silently
-# convolving the wrapper would drop the op. Reject with guidance: forward
-# ops go outermost.
+# cannot be peeled without a generic rewrap protocol, and silently convolving
+# the wrapper would drop the op. Reject with guidance: forward ops go outermost.
+# Otherwise delegate to ConvolvedDistributions' dispatch on the delay's value
+# support (a discrete modified delay convolves through its `pdf`; a continuous
+# one surfaces the discretise-first error), invoking the concrete-support method
+# since there is no generic `UnivariateDistribution` convolve_series.
 function convolve_series(
-        delay::AbstractModifiedDistribution, series::AbstractVector{<:Real};
-        interval = 1)
+        delay::AbstractModifiedDistribution, series::AbstractVector{<:Real})
     _check_no_buried_forward_op(delay)
+    delay isa DiscreteUnivariateDistribution && return invoke(convolve_series,
+        Tuple{DiscreteUnivariateDistribution, AbstractVector{<:Real}},
+        delay, series)
     return invoke(convolve_series,
-        Tuple{Distributions.UnivariateDistribution,
-            AbstractVector{<:Real}},
-        delay, series; interval)
+        Tuple{ContinuousUnivariateDistribution, AbstractVector{<:Real}},
+        delay, series)
 end
 
 function _check_no_buried_forward_op(d)
