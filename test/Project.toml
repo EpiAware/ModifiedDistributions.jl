@@ -9,6 +9,7 @@ DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
 DifferentiationInterfaceTest = "a82114a7-5aa3-49a8-9643-716bb13727a3"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+EpiAwareADTools = "908e2895-a690-4874-a954-ca006cb9734d"
 EpiAwarePackageTools = "7aaea248-0d11-4a0d-a7dc-86da30abb951"
 ExplicitImports = "7d51a73a-1435-4ff3-83d9-f097790105c7"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
@@ -29,6 +30,9 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 # merges (and ConvolvedDistributions 0.2 registers).
 ComposedDistributions = {rev = "fix/convolved-0.2-compat", url = "https://github.com/EpiAware/ComposedDistributions.jl"}
 ConvolvedDistributions = {rev = "main", url = "https://github.com/EpiAware/ConvolvedDistributions.jl"}
+# EpiAwareADTools is a new hard dependency of ConvolvedDistributions 0.2 and is
+# itself unregistered, so it must be pinned by git and named a direct dep here.
+EpiAwareADTools = {rev = "main", url = "https://github.com/EpiAware/EpiAwareADTools.jl"}
 EpiAwarePackageTools = {rev = "main", url = "https://github.com/EpiAware/EpiAwarePackageTools.jl"}
 ModifiedDistributions = {path = ".."}
 

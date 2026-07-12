@@ -11,6 +11,7 @@ Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 DocumenterCitations = "daee34ce-89f3-4625-b898-19384cb65244"
 DocumenterVitepress = "4710194d-e776-4893-9690-8d956a29c365"
+EpiAwareADTools = "908e2895-a690-4874-a954-ca006cb9734d"
 EpiAwarePackageTools = "7aaea248-0d11-4a0d-a7dc-86da30abb951"
 Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
 ModifiedDistributions = "664e6f8c-d74f-44d3-9f37-f82699103046"
@@ -31,6 +32,10 @@ EpiAwarePackageTools = {url = "https://github.com/EpiAware/EpiAwarePackageTools.
 # once #136 merges.
 ComposedDistributions = {url = "https://github.com/EpiAware/ComposedDistributions.jl", rev = "fix/convolved-0.2-compat"}
 ConvolvedDistributions = {url = "https://github.com/EpiAware/ConvolvedDistributions.jl", rev = "main"}
+# EpiAwareADTools is a new hard dependency of ConvolvedDistributions 0.2 and is
+# itself unregistered, so it must be pinned by git and named a direct dep here
+# (`[sources]` entries only apply to the active project's direct dependencies).
+EpiAwareADTools = {url = "https://github.com/EpiAware/EpiAwareADTools.jl", rev = "main"}
 
 [compat]
 AlgebraOfGraphics = "0.12"
