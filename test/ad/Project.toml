@@ -7,6 +7,7 @@ ADFixtures = "114781d2-3049-4c58-b3ab-bb4a1376abee"
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
 ComposedDistributions = "2f642b71-32a9-4f47-97c4-6deb7517f7a7"
 ConvolvedDistributions = "f5b942c9-bc5b-4664-8486-7f531bb06742"
+EpiAwareADTools = "908e2895-a690-4874-a954-ca006cb9734d"
 DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
 DifferentiationInterfaceTest = "a82114a7-5aa3-49a8-9643-716bb13727a3"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
@@ -35,3 +36,4 @@ EpiAwarePackageTools = {url = "https://github.com/EpiAware/EpiAwarePackageTools.
 # 0.1; pin its 0.2-adoption branch (#136). Revert to rev = "main" after #136 merges.
 ComposedDistributions = {url = "https://github.com/EpiAware/ComposedDistributions.jl", rev = "fix/convolved-0.2-compat"}
 ConvolvedDistributions = {url = "https://github.com/EpiAware/ConvolvedDistributions.jl", rev = "main"}
+EpiAwareADTools = {url = "https://github.com/EpiAware/EpiAwareADTools.jl", rev = "main"}
