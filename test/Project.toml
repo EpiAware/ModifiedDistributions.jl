@@ -4,6 +4,7 @@ Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 ComposedDistributions = "2f642b71-32a9-4f47-97c4-6deb7517f7a7"
 ConvolvedDistributions = "f5b942c9-bc5b-4664-8486-7f531bb06742"
+EpiAwareADTools = "908e2895-a690-4874-a954-ca006cb9734d"
 Coverage = "a2441757-f6aa-5fb2-8edb-039e3f45d037"
 DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
 DifferentiationInterfaceTest = "a82114a7-5aa3-49a8-9643-716bb13727a3"
@@ -29,6 +30,7 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 # merges (and ConvolvedDistributions 0.2 registers).
 ComposedDistributions = {rev = "fix/convolved-0.2-compat", url = "https://github.com/EpiAware/ComposedDistributions.jl"}
 ConvolvedDistributions = {rev = "main", url = "https://github.com/EpiAware/ConvolvedDistributions.jl"}
+EpiAwareADTools = {rev = "main", url = "https://github.com/EpiAware/EpiAwareADTools.jl"}
 EpiAwarePackageTools = {rev = "main", url = "https://github.com/EpiAware/EpiAwarePackageTools.jl"}
 ModifiedDistributions = {path = ".."}
 
