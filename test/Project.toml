@@ -24,11 +24,7 @@ TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [sources]
-# TEMPORARY: pinned to the ComposedDistributions 0.2-adoption branch (its #136)
-# because ComposedDistributions main still caps ConvolvedDistributions at 0.1,
-# which would block co-resolving 0.2 here. Revert to rev = "main" once #136
-# merges (and ConvolvedDistributions 0.2 registers).
-ComposedDistributions = {rev = "fix/convolved-0.2-compat", url = "https://github.com/EpiAware/ComposedDistributions.jl"}
+ComposedDistributions = {rev = "main", url = "https://github.com/EpiAware/ComposedDistributions.jl"}
 ConvolvedDistributions = {rev = "main", url = "https://github.com/EpiAware/ConvolvedDistributions.jl"}
 # EpiAwareADTools is a new hard dependency of ConvolvedDistributions 0.2 and is
 # itself unregistered, so it must be pinned by git and named a direct dep here.
