@@ -12,16 +12,21 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 [weakdeps]
 ComposedDistributions = "2f642b71-32a9-4f47-97c4-6deb7517f7a7"
 ConvolvedDistributions = "f5b942c9-bc5b-4664-8486-7f531bb06742"
+EpiAwareADTools = "908e2895-a690-4874-a954-ca006cb9734d"
 
 [extensions]
 ModifiedDistributionsComposedDistributionsExt = "ComposedDistributions"
-ModifiedDistributionsConvolvedDistributionsExt = "ConvolvedDistributions"
+# The ConvolvedDistributions extension also uses EpiAwareADTools (the AD seam
+# ConvolvedDistributions 0.2 adopted for its `*_ad_safe` / `primal` family);
+# it is a hard dep of ConvolvedDistributions, so both are always co-loaded.
+ModifiedDistributionsConvolvedDistributionsExt = ["ConvolvedDistributions", "EpiAwareADTools"]
 
 [compat]
 ComposedDistributions = "0.1"
 ConvolvedDistributions = "0.2"
 Distributions = "0.25"
 DocStringExtensions = "0.9"
+EpiAwareADTools = "0.1"
 Random = "1"
 Test = "1"
 julia = "1.11, 1.12"

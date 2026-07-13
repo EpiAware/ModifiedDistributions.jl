@@ -17,15 +17,15 @@ const QA_CONFIG = (
     aqua = (;),
 
     # ExplicitImports `ignore`: symbols an extension legitimately imports
-    # non-publicly. The ConvolvedDistributions extension wires internal
-    # machinery on both sides by design: this package's forward-op peeling
-    # and batched-evaluation traits, and ConvolvedDistributions' quadrature
-    # window / ad-safe families (the same pattern as its own
-    # SurvivalDistributions extension).
+    # non-publicly. The ConvolvedDistributions extension wires this package's
+    # internal machinery (forward-op peeling and batched-evaluation traits) by
+    # design; its quadrature-window / AD-safe families come from EpiAwareADTools'
+    # public surface (`primal`, `primal_distribution`, the `*_ad_safe` family,
+    # the seam ConvolvedDistributions 0.2 adopted).
     ei_ignore = (:_IdentityModified, :_LogModified, :_apply_forward_ops,
         :_has_batched_method, :_log1mexp, :_peel_forward,
-        :_cdf_ad_safe, :_ccdf_ad_safe, :_logcdf_ad_safe,
-        :_logccdf_ad_safe, :_primal, :_primal_distribution),
+        :cdf_ad_safe, :ccdf_ad_safe, :logcdf_ad_safe,
+        :logccdf_ad_safe, :primal, :primal_distribution),
 
     # Docstring `crossref_ignore`: upstream names docstrings link to via
     # `[`name`](@ref)`, e.g. (:pdf, :cdf, :logpdf).

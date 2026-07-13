@@ -97,7 +97,7 @@ end
     # affine(Normal) as an unbounded last component: the quadrature window
     # is picked by a quantile of the primal-reconstructed component, so
     # this returns finite values with no MethodError (the
-    # `_primal_distribution` fix).
+    # `primal_distribution` fix).
     an = affine(Normal(0.0, 1.0); scale = 2.0, shift = 1.0)
     d2 = convolved(Gamma(2.0, 1.0), an)
     c2 = cdf(d2, 4.0)
@@ -106,9 +106,9 @@ end
     @test isfinite(pdf(d2, 4.0))
 end
 
-@testitem "Convolved extension: _primal_distribution per modifier" begin
+@testitem "Convolved extension: primal_distribution per modifier" begin
     using Distributions
-    using ConvolvedDistributions: _primal_distribution
+    using EpiAwareADTools: primal_distribution
     using ModifiedDistributions: Affine, Modified
     using ForwardDiff: Dual
 
@@ -116,7 +116,7 @@ end
 
     # Affine rebuilds itself around the primal inner distribution.
     a = affine(g; scale = 2.0, shift = 1.0)
-    pa = _primal_distribution(a)
+    pa = primal_distribution(a)
     @test pa isa Affine
     @test pa.dist isa Gamma
     @test pa.scale == 2.0
@@ -125,52 +125,52 @@ end
     # Transformed and Weighted recurse to the inner distribution: the
     # forward op / likelihood weight never moves a quantile, so the primal
     # window component is the wrapped distribution itself.
-    @test _primal_distribution(thin(g, 0.3)) isa Gamma
-    @test _primal_distribution(weight(g, 2.0)) isa Gamma
+    @test primal_distribution(thin(g, 0.3)) isa Gamma
+    @test primal_distribution(weight(g, 2.0)) isa Gamma
 
     # Modified rebuilds with the primal base and effect, keeping the link.
     m = modify(g, 0.5)
-    pm = _primal_distribution(m)
+    pm = primal_distribution(m)
     @test pm isa Modified
     @test pm.effect == 0.5
     @test quantile(pm, 0.5) ≈ quantile(m, 0.5)
 
     # Nested wrappers recurse all the way down.
     na = thin(affine(g; scale = 2.0), 0.3)
-    @test _primal_distribution(na) isa Affine
+    @test primal_distribution(na) isa Affine
 
     # AD wrappers are stripped: a Dual-parameterised Affine reconstructs
     # with plain Float64 parameters everywhere.
     dg = Gamma(Dual(2.0, 1.0), Dual(1.0, 0.0))
     da = Affine(dg, Dual(2.0, 1.0), Dual(1.0, 0.0))
-    pda = _primal_distribution(da)
+    pda = primal_distribution(da)
     @test params(pda.dist) === (2.0, 1.0)
     @test pda.scale === 2.0
     @test pda.shift === 1.0
 
     dm = Modified(dg, Dual(0.5, 1.0), ModifiedDistributions.LogLink)
-    pdm = _primal_distribution(dm)
+    pdm = primal_distribution(dm)
     @test params(pdm.dist) === (2.0, 1.0)
     @test pdm.effect === 0.5
 end
 
 @testitem "Convolved extension: AD-safe survival family for Modified" begin
     using Distributions
-    using ConvolvedDistributions: _cdf_ad_safe, _ccdf_ad_safe,
-                                  _logcdf_ad_safe, _logccdf_ad_safe
+    using EpiAwareADTools: cdf_ad_safe, ccdf_ad_safe,
+                           logcdf_ad_safe, logccdf_ad_safe
 
     g = Gamma(2.0, 1.0)
     for m in (modify(g, 0.5), modify(g, 0.3; link = identity))
         for x in (0.5, 2.0, 5.0)
-            @test _logccdf_ad_safe(m, x) ≈ logccdf(m, x)
-            @test _ccdf_ad_safe(m, x) ≈ ccdf(m, x)
-            @test _cdf_ad_safe(m, x) ≈ cdf(m, x)
-            @test _logcdf_ad_safe(m, x) ≈ logcdf(m, x)
+            @test logccdf_ad_safe(m, x) ≈ logccdf(m, x)
+            @test ccdf_ad_safe(m, x) ≈ ccdf(m, x)
+            @test cdf_ad_safe(m, x) ≈ cdf(m, x)
+            @test logcdf_ad_safe(m, x) ≈ logcdf(m, x)
         end
         # At and below the support minimum the survival stays at one.
-        @test _logccdf_ad_safe(m, 0.0) == 0.0
-        @test _logccdf_ad_safe(m, -1.0) == 0.0
-        @test _cdf_ad_safe(m, -1.0) == 0.0
+        @test logccdf_ad_safe(m, 0.0) == 0.0
+        @test logccdf_ad_safe(m, -1.0) == 0.0
+        @test cdf_ad_safe(m, -1.0) == 0.0
     end
 end
 
