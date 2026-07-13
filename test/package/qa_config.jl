@@ -22,7 +22,8 @@ const QA_CONFIG = (
     # traits. The AD-safe hook family and primal helpers it extends are
     # public exports of EpiAwareADTools (#137), so they need no ignore entry.
     ei_ignore = (:_IdentityModified, :_LogModified, :_apply_forward_ops,
-        :_has_batched_method, :_log1mexp, :_peel_forward),
+        :_has_batched_method, :_log1mexp, :_peel_forward,
+        :_node_children, :_rebuild),
 
     # Docstring `crossref_ignore`: upstream names docstrings link to via
     # `[`name`](@ref)`, e.g. (:pdf, :cdf, :logpdf).
