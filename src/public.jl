@@ -37,6 +37,19 @@ public IdentityLink
 public LogitLink
 public hazard_link
 
+# The modifier-payload accessors (public but not exported, mirroring the
+# wrapper types). They expose the modification data each leaf carries so
+# downstream code (notably ComposedDistributions' modifier extension) reads
+# them instead of struct fields (#61). The `get_` prefix mirrors the exported
+# `get_dist`.
+public get_scale
+public get_shift
+public get_weight
+public get_effect
+public get_link
+public get_op
+public get_factor
+
 # `TestUtils.test_modified_interface(d)` lets a downstream author verify a
 # new modifier leaf against the interface contract.
 public TestUtils
