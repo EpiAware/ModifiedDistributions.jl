@@ -24,8 +24,6 @@ ModifiedDistributions = {path = "../.."}
 # During the AD suite the active project is `test/ad`, whose own direct
 # ConvolvedDistributions pin governs resolution (`[sources]` entries only
 # apply to the active project's direct dependencies).
-# TEMPORARY: ComposedDistributions main still caps ConvolvedDistributions at
-# 0.1; pin its 0.2-adoption branch (#136). Revert to rev = "main" after #136 merges.
-ComposedDistributions = {url = "https://github.com/EpiAware/ComposedDistributions.jl", rev = "fix/convolved-0.2-compat"}
+ComposedDistributions = {url = "https://github.com/EpiAware/ComposedDistributions.jl", rev = "main"}
 ConvolvedDistributions = {url = "https://github.com/EpiAware/ConvolvedDistributions.jl", rev = "main"}
 EpiAwareADTools = {url = "https://github.com/EpiAware/EpiAwareADTools.jl", rev = "main"}
