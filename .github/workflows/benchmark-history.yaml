@@ -63,6 +63,43 @@ jobs:
                     Pkg.build("AirspeedVelocity")'
           echo "$HOME/.julia/bin" >> "$GITHUB_PATH"
 
+      # benchpkg installs the package into its own temp project, where Pkg
+      # honours only the *active* project's `[sources]`. A dependency pinned
+      # there by git url/rev because it is not yet registered cannot resolve
+      # in that temp project, and the run fails with "has no known versions!"
+      # (#216). Register each such pin into a throwaway registry in this
+      # runner's depot: registries, unlike sources, are depot-level, so the
+      # dependency then resolves by name in every environment on the runner,
+      # benchpkg's temp projects included. A package with no unregistered
+      # pins is a no-op (nothing cloned, no registry created), and the shell
+      # guard exits before installing anything, so a package with no
+      # `[sources]` at all pays nothing and takes on no new failure surface.
+      #
+      # The scratch registry from an earlier run comes back with the cached
+      # depot and is stale by construction, so it is dropped first, before the
+      # guard: a package that has since dropped its pin (because the
+      # dependency reached a registry) must not be left with a registry that
+      # still carries the name, which fails the depot with a hash mismatch.
+      - name: Bootstrap registry for unregistered [sources] deps
+        run: |
+          rm -rf "${JULIA_DEPOT_PATH:-$HOME/.julia}/registries/EpiAwareScratch"
+          if ! grep -qE '^\[sources(\.|\])' Project.toml; then
+            echo "no [sources] section: nothing to register"
+            exit 0
+          fi
+          julia -e '
+            using Pkg
+            Pkg.activate(; temp = true)
+            Pkg.add([
+                Pkg.PackageSpec(name = "LocalRegistry"),
+                Pkg.PackageSpec(
+                    url = "https://github.com/EpiAware/EpiAwarePackageTools.jl",
+                    rev = "main")])
+            using EpiAwarePackageTools.Benchmarks: bootstrap_sources_registry
+            done = bootstrap_sources_registry(pwd())
+            println(isempty(done) ? "no unregistered [sources] deps" :
+                    "registered: " * join(done, ", "))'
+
       # Last 5 tags (newest first) plus the pushed commit. On a tag push
       # GITHUB_SHA already points at the tagged commit, so HEAD is the
       # newest point on the timeline either way.
@@ -101,17 +138,6 @@ jobs:
       # benchpkgplot auto-flattens the BenchmarkGroup into one PNG per
       # leaf benchmark (SVG is unsupported). benchpkgtable emits a
       # markdown ratio summary linked from the index.
-      #
-      # `--mode time` (not `time,memory`): with two modes benchpkgtable
-      # emits two stacked markdown tables (a time table then a memory
-      # table) into table.md. The docs build reshapes only a single
-      # table, so the second table's header row (a blank leading
-      # benchmark-name cell) is read as a data row with an empty name and
-      # rendered as an empty `###` suite heading, which slugifies to an
-      # empty anchor id and aborts the DocumenterVitepress inventory build
-      # with `ArgumentError: name must have non-zero length` (#65). The
-      # history timeline only renders the time ratios, so the memory table
-      # was never displayed — dropping it keeps table.md a single table.
       - name: Plot timeline and table
         run: |
           mkdir -p public
@@ -121,7 +147,7 @@ jobs:
             --input-dir=results --output-dir=public
           benchpkgtable ModifiedDistributions \
             --rev="${{ steps.revs.outputs.revs }}" \
-            --input-dir=results --ratio --mode time \
+            --input-dir=results --ratio --mode time,memory \
             > public/table.md
 
       # Minimal index so the published folder lists the generated plots.
