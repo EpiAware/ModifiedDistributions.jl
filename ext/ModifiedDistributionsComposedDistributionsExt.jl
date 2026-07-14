@@ -25,10 +25,11 @@ module ModifiedDistributionsComposedDistributionsExt
 import ModifiedDistributions: affine, weight, thin, cumulative,
                               series_transform, modify
 using ComposedDistributions: Sequential, Parallel, observed_distribution
-# Generic composer node-walk pair (the same helpers ComposedDistributions' own
-# structural edits use): `_node_children` reads a node's branch tuple and
-# `_rebuild` rebuilds the node type around a new branch tuple, preserving names.
-using ComposedDistributions: _node_children, _rebuild
+# Public composer interface for rebuilding a `Parallel` over modified branches:
+# `component_names` reads the ordered branch names, `event` fetches a named
+# branch, and the `parallel` constructor reassembles a `Parallel` from
+# `name => branch` pairs, preserving the branch names and order.
+using ComposedDistributions: parallel, component_names, event
 
 # An affine transform of the chain's observed total.
 function affine(d::Sequential; scale::Real = 1, shift::Real = 0)
@@ -61,11 +62,16 @@ modify(d::Sequential, ::Nothing) = d
 #
 # A `Parallel` has no single observed scalar, so a modifier applies to ALL of
 # its independent branches: wrap each branch with the same modifier and rebuild
-# a `Parallel` of the modified branches. `_rebuild(d, ...)` restores the branch
-# names, so labels are preserved; each branch may itself be a leaf, a nested
-# `Sequential`/`Parallel`, or a univariate one_of composer, so the per-branch
-# call reuses the Sequential methods above and the univariate constructors.
-_map_branches(f, d::Parallel) = _rebuild(d, map(f, _node_children(d)))
+# a `Parallel` of the modified branches. Reassembling through the public
+# `parallel(name => branch, ...)` constructor over `component_names` / `event`
+# restores the branch names in order, so labels are preserved; each branch may
+# itself be a leaf, a nested `Sequential`/`Parallel`, or a univariate one_of
+# composer, so the per-branch call reuses the Sequential methods above and the
+# univariate constructors.
+function _map_branches(f, d::Parallel)
+    return parallel((name => f(event(d, name))
+    for name in component_names(d))...)
+end
 
 # An affine transform of each branch endpoint.
 function affine(d::Parallel; scale::Real = 1, shift::Real = 0)
