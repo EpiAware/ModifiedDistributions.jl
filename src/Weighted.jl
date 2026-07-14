@@ -34,8 +34,9 @@ manual_logpdf = 10.0 * logpdf(d, observed_value)
 # weighted_logpdf ≈ manual_logpdf
 ```
 "
-struct Weighted{D <: UnivariateDistribution, T <: Union{Real, Missing}} <:
-       AbstractModifiedDistribution{Univariate, ValueSupport}
+struct Weighted{D <: UnivariateDistribution, T <: Union{Real, Missing},
+    S <: ValueSupport} <:
+       AbstractModifiedDistribution{Univariate, S}
     "The underlying distribution being weighted."
     dist::D
     "The weight to apply to log-probabilities."
@@ -47,7 +48,7 @@ struct Weighted{D <: UnivariateDistribution, T <: Union{Real, Missing}} <:
         if !ismissing(weight) && weight < 0
             throw(ArgumentError("weight must be non-negative"))
         end
-        new{D, T}(dist, weight)
+        new{D, T, Distributions.value_support(D)}(dist, weight)
     end
 end
 
