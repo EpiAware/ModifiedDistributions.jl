@@ -14,6 +14,7 @@ DocumenterCitations = "daee34ce-89f3-4625-b898-19384cb65244"
 DocumenterVitepress = "4710194d-e776-4893-9690-8d956a29c365"
 EpiAwarePackageTools = "7aaea248-0d11-4a0d-a7dc-86da30abb951"
 Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
+LoweredDistributions = "8539b7eb-0b85-40d0-a8a6-65093c3d0137"
 ModifiedDistributions = "664e6f8c-d74f-44d3-9f37-f82699103046"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
@@ -31,6 +32,11 @@ EpiAwarePackageTools = {url = "https://github.com/EpiAware/EpiAwarePackageTools.
 ComposedDistributions = {url = "https://github.com/EpiAware/ComposedDistributions.jl", rev = "main"}
 ConvolvedDistributions = {url = "https://github.com/EpiAware/ConvolvedDistributions.jl", rev = "main"}
 EpiAwareADTools = {url = "https://github.com/EpiAware/EpiAwareADTools.jl", rev = "main"}
+# LoweredDistributions (the ModifiedDistributionsLoweredDistributionsExt
+# trigger, used by the lowering tutorial) is unregistered, so it is pinned by
+# git; it must be a direct dep here because `[sources]` entries only apply to
+# the active project's direct dependencies.
+LoweredDistributions = {url = "https://github.com/EpiAware/LoweredDistributions.jl", rev = "main"}
 
 [compat]
 AlgebraOfGraphics = "0.12"

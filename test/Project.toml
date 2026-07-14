@@ -15,6 +15,7 @@ ExplicitImports = "7d51a73a-1435-4ff3-83d9-f097790105c7"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 JuliaFormatter = "98e50ef6-434e-11e9-1051-2b60c6c9e899"
+LoweredDistributions = "8539b7eb-0b85-40d0-a8a6-65093c3d0137"
 ModifiedDistributions = "664e6f8c-d74f-44d3-9f37-f82699103046"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
@@ -28,6 +29,11 @@ ComposedDistributions = {rev = "main", url = "https://github.com/EpiAware/Compos
 ConvolvedDistributions = {rev = "main", url = "https://github.com/EpiAware/ConvolvedDistributions.jl"}
 EpiAwareADTools = {rev = "main", url = "https://github.com/EpiAware/EpiAwareADTools.jl"}
 EpiAwarePackageTools = {rev = "main", url = "https://github.com/EpiAware/EpiAwarePackageTools.jl"}
+# LoweredDistributions (the ModifiedDistributionsLoweredDistributionsExt
+# trigger, #68) is unregistered, so it is pinned by git; it must be a direct
+# dep here because `[sources]` entries only apply to the active project's
+# direct dependencies.
+LoweredDistributions = {rev = "main", url = "https://github.com/EpiAware/LoweredDistributions.jl"}
 ModifiedDistributions = {path = ".."}
 
 [compat]
