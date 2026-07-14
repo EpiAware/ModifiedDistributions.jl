@@ -185,3 +185,28 @@ end
     @test draw isa Real
     @test draw > 0
 end
+
+@testitem "value support propagates through Transformed (#46)" begin
+    using ModifiedDistributions, Distributions
+    using Distributions: value_support
+
+    # A continuous inner distribution yields a Continuous Transformed; a
+    # discrete inner yields a Discrete one, rather than the erased
+    # `ValueSupport`. This keeps modifier nesting order-independent.
+    dc = thin(LogNormal(1.5, 0.5), 0.3)
+    @test value_support(typeof(dc)) === Continuous
+    @test dc isa ContinuousUnivariateDistribution
+
+    dd = thin(Poisson(3.0), 0.3)
+    @test value_support(typeof(dd)) === Discrete
+    @test dd isa DiscreteUnivariateDistribution
+
+    @test value_support(typeof(cumulative(Gamma(2.0, 1.0)))) === Continuous
+    @test value_support(typeof(cumulative(Poisson(3.0)))) === Discrete
+
+    # Nesting preserves the inner support: a Modified (continuous-only) now
+    # accepts a thinned continuous base, which support erasure used to reject.
+    nested = modify(thin(LogNormal(1.5, 0.5), 0.3), 0.5)
+    @test nested isa ModifiedDistributions.Modified
+    @test value_support(typeof(nested)) === Continuous
+end

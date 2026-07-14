@@ -657,3 +657,23 @@ end
     @test draw isa Real
     @test draw > 0
 end
+
+@testitem "value support propagates through Weighted (#46)" begin
+    using ModifiedDistributions, Distributions
+    using Distributions: value_support
+
+    # Weighted carries the inner value support instead of erasing it to
+    # `ValueSupport`, so it nests in any order with the other modifiers.
+    wc = weight(Normal(0.0, 1.0), 2.0)
+    @test value_support(typeof(wc)) === Continuous
+    @test wc isa ContinuousUnivariateDistribution
+
+    wd = weight(Poisson(3.0), 2.0)
+    @test value_support(typeof(wd)) === Discrete
+    @test wd isa DiscreteUnivariateDistribution
+
+    # Missing-weight and nesting cases keep the inner support too.
+    @test value_support(typeof(weight(Poisson(3.0)))) === Discrete
+    @test value_support(typeof(weight(thin(LogNormal(1.5, 0.5), 0.3), 2.0))) ===
+          Continuous
+end

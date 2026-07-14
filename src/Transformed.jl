@@ -63,12 +63,17 @@ with the generic [`series_transform`](@ref) or the specialised [`thin`](@ref) /
 # See also
 - [`series_transform`](@ref), [`thin`](@ref), [`cumulative`](@ref): constructors
 "
-struct Transformed{D <: UnivariateDistribution, Op} <:
-       AbstractModifiedDistribution{Univariate, ValueSupport}
+struct Transformed{D <: UnivariateDistribution, Op, S <: ValueSupport} <:
+       AbstractModifiedDistribution{Univariate, S}
     "The inner distribution."
     dist::D
     "The forward op applied to a convolved series."
     op::Op
+
+    function Transformed(dist::D, op::Op) where {
+            D <: UnivariateDistribution, Op}
+        new{D, Op, Distributions.value_support(D)}(dist, op)
+    end
 end
 
 @doc "
