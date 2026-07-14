@@ -15,7 +15,8 @@ const LIGHT_TUTORIALS = [
     "weighted-likelihoods.jl",
     "modifier-pipeline.jl",
     "composed-chains.jl",
-    "convolved-modifiers.jl"
+    "convolved-modifiers.jl",
+    "lowering.jl"
 ]
 
 # Heavy tutorials (live MCMC fits, multi-backend AD, plotting) are each

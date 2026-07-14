@@ -13,6 +13,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 ComposedDistributions = "2f642b71-32a9-4f47-97c4-6deb7517f7a7"
 ConvolvedDistributions = "f5b942c9-bc5b-4664-8486-7f531bb06742"
 EpiAwareADTools = "908e2895-a690-4874-a954-ca006cb9734d"
+LoweredDistributions = "8539b7eb-0b85-40d0-a8a6-65093c3d0137"
 
 [extensions]
 ModifiedDistributionsComposedDistributionsExt = "ComposedDistributions"
@@ -21,6 +22,9 @@ ModifiedDistributionsComposedDistributionsExt = "ComposedDistributions"
 # ConvolvedDistributions 0.2 itself depends on EpiAwareADTools, loading
 # ConvolvedDistributions brings EpiAwareADTools with it.
 ModifiedDistributionsConvolvedDistributionsExt = ["ConvolvedDistributions", "EpiAwareADTools"]
+# The LoweredDistributions bridge (#68): source-owned `lower` methods for the
+# modifier leaves, triggered when LoweredDistributions is loaded.
+ModifiedDistributionsLoweredDistributionsExt = "LoweredDistributions"
 
 [compat]
 ComposedDistributions = "0.1"
@@ -28,6 +32,7 @@ ConvolvedDistributions = "0.2"
 Distributions = "0.25"
 DocStringExtensions = "0.9"
 EpiAwareADTools = "0.1"
+LoweredDistributions = "0.1"
 Random = "1"
 Test = "1"
 julia = "1.11, 1.12"
