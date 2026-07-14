@@ -70,6 +70,11 @@ include("Transformed.jl")
 include("Modified.jl")
 include("get_dist.jl")
 
+# Public field accessors for the modifier payloads (get_scale/get_shift,
+# get_weight, get_effect/get_link, get_op/get_factor). Included after the
+# wrapper types they read (see accessors.jl).
+include("accessors.jl")
+
 # Public interface-conformance harness (a public submodule).
 include("TestUtils.jl")
 

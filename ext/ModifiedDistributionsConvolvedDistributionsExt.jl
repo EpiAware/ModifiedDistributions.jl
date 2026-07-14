@@ -44,7 +44,8 @@ import EpiAwareADTools: primal_distribution, cdf_ad_safe, ccdf_ad_safe,
 using ConvolvedDistributions: discretise_pmf
 using EpiAwareADTools: primal
 using ModifiedDistributions: AbstractModifiedDistribution, Affine, Modified,
-                             Transformed, Weighted, get_dist,
+                             Transformed, Weighted, get_dist, get_scale,
+                             get_shift, get_effect, get_link,
                              _peel_forward, _apply_forward_ops, _log1mexp,
                              _LogModified, _IdentityModified
 import ModifiedDistributions: _has_batched_method
@@ -123,18 +124,19 @@ end
 #
 # A forward op / likelihood weight never moves a quantile, so `Transformed`
 # and `Weighted` recurse straight to the inner distribution.
-primal_distribution(d::Transformed) = primal_distribution(d.dist)
-primal_distribution(d::Weighted) = primal_distribution(d.dist)
+primal_distribution(d::Transformed) = primal_distribution(get_dist(d))
+primal_distribution(d::Weighted) = primal_distribution(get_dist(d))
 
 # `Affine` and `Modified` do move quantiles, so they rebuild around the
 # primal inner distribution with their own parameters stripped to primals.
 function primal_distribution(d::Affine)
-    return Affine(primal_distribution(d.dist), primal(d.scale),
-        primal(d.shift))
+    return Affine(primal_distribution(get_dist(d)), primal(get_scale(d)),
+        primal(get_shift(d)))
 end
 
 function primal_distribution(d::Modified)
-    return Modified(primal_distribution(d.dist), primal(d.effect), d.link)
+    return Modified(primal_distribution(get_dist(d)), primal(get_effect(d)),
+        get_link(d))
 end
 
 # --- 3. AD-safe survival family for Modified --------------------------------
@@ -149,16 +151,17 @@ end
 
 # Log link (proportional hazards): logS* = exp(effect) * logS.
 function logccdf_ad_safe(d::_LogModified, x::Real)
-    return exp(d.effect) * logccdf_ad_safe(d.dist, x)
+    return exp(get_effect(d)) * logccdf_ad_safe(get_dist(d), x)
 end
 
 # Identity link (additive hazards): the extra hazard accrues from the
 # support minimum `m`, so logS* = logS - effect * (x - m) above `m` and
 # survival stays at one at or below it.
 function logccdf_ad_safe(d::_IdentityModified, x::Real)
-    m = minimum(d.dist)
+    inner = get_dist(d)
+    m = minimum(inner)
     x <= m && return zero(float(typeof(x)))
-    return logccdf_ad_safe(d.dist, x) - d.effect * (x - m)
+    return logccdf_ad_safe(inner, x) - get_effect(d) * (x - m)
 end
 
 # The cdf/ccdf/logcdf variants the convolution paths call, all derived
