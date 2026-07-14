@@ -71,4 +71,14 @@ const INDEX_STRIP_SECTIONS = String[]
 # history (the timeline published to the repo's `benchmarks` branch). Defaults
 # to the `benchmarks` flag the package was scaffolded with; `false` drops the
 # page and `make.jl` also omits its `pages.jl` nav entry.
-const BENCHMARK_PAGE = true
+#
+# TEMPORARY (#65): disabled to unblock the whole docs build. The live
+# `benchmarks` branch still holds a two-table `history/table.md` (from the
+# old `benchpkgtable --mode time,memory`), whose second table's blank
+# header row renders as an empty `###` heading -> empty anchor id ->
+# DocumenterVitepress aborts the entire site build. `benchmark-history.yaml`
+# now emits `--mode time` (single table), so the branch heals on the next
+# push to `main` (or a `workflow_dispatch` run) with the fixed workflow.
+# Flip back to `true` once the `benchmarks` branch carries a single-table
+# `table.md` (tracked as a #65 follow-up).
+const BENCHMARK_PAGE = false
