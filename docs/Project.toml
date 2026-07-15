@@ -3,9 +3,12 @@
 # standard). Add doc-only deps (e.g. plotting, DocumenterCitations) here as the
 # docs grow. The package itself is pinned by path via `[sources]`.
 [deps]
+ADFixtures = "114781d2-3049-4c58-b3ab-bb4a1376abee"
 AlgebraOfGraphics = "cbdf2221-f076-402e-a563-3d30da359d67"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 ComposedDistributions = "2f642b71-32a9-4f47-97c4-6deb7517f7a7"
+DataFramesMeta = "1313f7d8-7da2-5740-9ea0-a2ca25f37964"
+DifferentiationInterfaceTest = "a82114a7-5aa3-49a8-9643-716bb13727a3"
 ConvolvedDistributions = "f5b942c9-bc5b-4664-8486-7f531bb06742"
 EpiAwareADTools = "908e2895-a690-4874-a954-ca006cb9734d"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
@@ -15,12 +18,17 @@ DocumenterVitepress = "4710194d-e776-4893-9690-8d956a29c365"
 EpiAwarePackageTools = "7aaea248-0d11-4a0d-a7dc-86da30abb951"
 Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
 LoweredDistributions = "8539b7eb-0b85-40d0-a8a6-65093c3d0137"
+Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 ModifiedDistributions = "664e6f8c-d74f-44d3-9f37-f82699103046"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [sources]
 ModifiedDistributions = {path = ".."}
+# The AD-backends tutorial renders from the package-owned `test/ADFixtures`
+# registry (the ADRegistry contract); path-pinned so the docs env reaches it.
+ADFixtures = {path = "../test/ADFixtures"}
 # docs/make.jl drives the build through EpiAwarePackageTools.DocsBuild; until
 # the kit is registered it is pinned by git, mirroring test/Project.toml.
 EpiAwarePackageTools = {url = "https://github.com/EpiAware/EpiAwarePackageTools.jl", rev = "main"}
@@ -41,10 +49,14 @@ LoweredDistributions = {url = "https://github.com/EpiAware/LoweredDistributions.
 [compat]
 AlgebraOfGraphics = "0.12"
 CairoMakie = "0.15"
+DataFramesMeta = "0.15"
+DifferentiationInterfaceTest = "0.9, 0.10"
 Distributions = "0.25"
 Documenter = "1"
 DocumenterCitations = "1"
 DocumenterVitepress = "0.3"
 Literate = "2"
+Markdown = "1"
 Plots = "1"
 Random = "1"
+Statistics = "1"
