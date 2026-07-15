@@ -36,14 +36,14 @@
     # closed-form additive-hazard path handles them in core (no quadrature).
     dneg = modify(base, -0.1; link = identity)
     @test dneg isa ModifiedDistributions.Modified
-    @test get_effect(dneg) == -0.1
+    @test ModifiedDistributions.get_effect(dneg) == -0.1
 
     # A callable effect on a continuous base constructs (its evaluation is the
     # deferred numeric path, issue #77b); get_effect returns the callable.
     fx = t -> 0.1 * t
     dcall = modify(base, fx)
     @test dcall isa ModifiedDistributions.Modified
-    @test get_effect(dcall) === fx
+    @test ModifiedDistributions.get_effect(dcall) === fx
 
     # General links on a CONTINUOUS base still need numeric integration and are
     # rejected at construction (deferred, issue #77b).
@@ -242,7 +242,7 @@ end
     for link in (log, identity)
         d = modify(base, t -> 0.1 * t; link = link)
         @test d isa ModifiedDistributions.Modified
-        @test get_effect(d)(2.0) ≈ 0.2
+        @test ModifiedDistributions.get_effect(d)(2.0) ≈ 0.2
         @test params(d) == params(base)
         # Below the support survival is one; in-support evaluation throws the
         # guiding deferred-path ArgumentError until the numeric path lands.
@@ -345,20 +345,34 @@ end
     @test mpmf ≈ ref
     @test sum(mpmf) ≈ 1.0
 
-    # A proper distribution for any link, with complementary/accumulating cdf.
+    # The reconstruction sums to one for ANY link (the final-bin hazard is
+    # pinned to one, so the reconstructed masses telescope to one), and the cdf
+    # accumulates the pmf and is complementary. This holds even for links whose
+    # inverse is not bounded to [0, 1].
     for link in (:logit, log, identity,
         ModifiedDistributions.hazard_link(h -> h, e -> e))
         mm = modify(ic, effects; link = link)
         @test sum(pdf(mm, Float64(b)) for b in 0:(n - 1)) ≈ 1.0
         @test cdf(mm, 4.0) + ccdf(mm, 4.0) ≈ 1.0
         @test cdf(mm, 4.0) ≈ sum(pdf(mm, Float64(b)) for b in 0:4)
-        @test logpdf(mm, 2.0) ≈ log(pdf(mm, 2.0))
-        @test logccdf(mm, 3.0) ≈ log(ccdf(mm, 3.0))
         # Outside the grid: pdf zero, cdf saturates.
         @test pdf(mm, -1.0) == 0.0
         @test cdf(mm, -1.0) == 0.0
         @test cdf(mm, Float64(n)) ≈ 1.0
     end
+
+    # The logit link keeps each bin's hazard in (0, 1), so its reconstruction is
+    # a genuine probability vector (all masses non-negative); logpdf/logccdf are
+    # then the logs of the (positive) pmf and survival. A general link (identity
+    # or a linear custom link) can push a bin's hazard outside [0, 1] and yield a
+    # formally-normalised but improper reconstruction, so this proper-mass check
+    # is logit-specific.
+    ml = modify(ic, effects; link = :logit)
+    for b in 0:(n - 1)
+        @test pdf(ml, Float64(b)) >= 0
+    end
+    @test logpdf(ml, 2.0) ≈ log(pdf(ml, 2.0))
+    @test logccdf(ml, 3.0) ≈ log(ccdf(ml, 3.0))
 
     # Zero effect reconstructs the baseline hazard with the final-bin
     # maximum-delay constraint; the first n-1 bins match the raw masses.
