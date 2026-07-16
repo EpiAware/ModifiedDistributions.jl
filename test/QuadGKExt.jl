@@ -101,6 +101,21 @@ end
     @test cdf(d, q) ≈ total / 2 rtol=1e-3
 end
 
+@testitem "QuadGK numeric path: quantile expands the bracket for a wide law" begin
+    using Distributions
+    using QuadGK
+
+    # A clamped negative additive effect slows events, so the modified law is
+    # wider than its base: the base quantile undershoots and the quantile's
+    # doubling loop must expand the bracket to reach `p`.
+    d = modify(LogNormal(1.5, 0.5), _ -> -0.4; link = identity)
+    total = cdf(d, 1.0e4)
+    p = 0.9 * total
+    q = quantile(d, p)
+    @test cdf(d, q) ≈ p rtol=1e-3
+    @test q > quantile(LogNormal(1.5, 0.5), p)   # bracket genuinely expanded
+end
+
 @testitem "QuadGK numeric path: base with nonzero support minimum" begin
     using Distributions
     using QuadGK
