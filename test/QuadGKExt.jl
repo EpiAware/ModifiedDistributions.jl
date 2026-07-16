@@ -174,3 +174,31 @@ end
     @test ForwardDiff.derivative(gnum, 0.4) ≈
           ForwardDiff.derivative(gclosed, 0.4) rtol=1e-5
 end
+
+@testitem "QuadGK numeric path: :logit on a continuous base errors above one" begin
+    using Distributions
+    using QuadGK
+
+    # LogitLink's `_logit` clamps to [1e-12, 1 - 1e-12], correct for the
+    # discrete per-bin path (a genuine probability) but silently wrong here:
+    # a base hazard above one is a rate, not a probability, so the continuous
+    # numeric path must reject it rather than pin every out-of-domain rate to
+    # the same clamped logit value.
+    d = modify(LogNormal(0.0, 0.3), 0.5; link = :logit)
+    @test_throws DomainError logccdf(d, 5.0)
+    @test_throws DomainError logpdf(d, 5.0)
+
+    # A regime where the base hazard genuinely stays below one still
+    # evaluates, and matches a from-scratch numeric cumulative hazard built
+    # from the unclamped logit/logistic pair.
+    base = LogNormal(3.0, 0.3)
+    β = -0.2
+    d2 = modify(base, β; link = :logit)
+    x = 5.0
+    logit(p) = log(p) - log(1 - p)
+    logistic(z) = inv(1 + exp(-z))
+    hazard(u) = pdf(base, u) / ccdf(base, u)
+    modhazard(u) = max(logistic(logit(hazard(u)) + β), 0.0)
+    expected, _ = quadgk(modhazard, minimum(base), x)
+    @test logccdf(d2, x) ≈ -expected rtol=1e-6
+end

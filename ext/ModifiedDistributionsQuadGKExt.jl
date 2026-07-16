@@ -26,19 +26,11 @@
 module ModifiedDistributionsQuadGKExt
 
 using QuadGK: quadgk
-using Distributions: logpdf, logccdf, minimum, quantile
+using Distributions: minimum, quantile
 import ModifiedDistributions: _numeric_logccdf, _numeric_logpdf
 using ModifiedDistributions: Modified, _NumericModified, get_dist, get_effect,
-                             get_link
-
-# The base hazard h(u) = f(u)/S(u) = exp(logpdf - logccdf). A numerically
-# exhausted survival (logccdf = -Inf at an upper support edge) saturates the
-# hazard to +Inf rather than producing a NaN from -Inf - (-Inf).
-function _hazard(dist, u)
-    logS = logccdf(dist, u)
-    isfinite(logS) || return oftype(float(u), Inf)
-    return exp(logpdf(dist, u) - logS)
-end
+                             get_link, LogitLink, _logit_strict, _base_hazard,
+                             _scan_crossings
 
 # The hazard modification at `u`: a scalar effect broadcast over time, or a
 # callable evaluated at `u`.
@@ -47,10 +39,18 @@ _effect_at(effect, u) = effect isa Function ? effect(u) : effect
 # The unclamped modified hazard g⁻¹(g(h(u)) + effect(u)), which can dip below
 # zero (an additive effect pushing the hazard negative); the clamp knots are
 # its sign changes.
+#
+# `LogitLink`'s forward link is `_logit`, which clamps to keep the discrete
+# per-bin path (a genuine probability) finite at a saturated bin. Here the
+# base hazard is a rate in [0, ∞), not a probability, so a value outside
+# (0, 1) is out of domain and must throw rather than silently pin to the
+# clamped constant; `_logit_strict` is the unclamped forward link used only
+# on this continuous numeric path.
 function _raw_mod_hazard(d::Modified, u)
     link = get_link(d)
-    h = _hazard(get_dist(d), u)
-    return link.invlink(link.g(h) + _effect_at(get_effect(d), u))
+    h = _base_hazard(get_dist(d), u)
+    g = link === LogitLink ? _logit_strict : link.g
+    return link.invlink(g(h) + _effect_at(get_effect(d), u))
 end
 
 # The modified hazard h*(u) = max(g⁻¹(g(h(u)) + effect(u)), 0), clamped at zero
@@ -66,37 +66,13 @@ end
 # clamped. Handing these to `quadgk` as subdivision points is essential — a
 # bare adaptive rule can sample only clamped points, estimate the error as zero
 # and never subdivide, silently returning an integral of zero over a mostly
-# clamped interval. A coarse scan brackets each sign change and bisection
-# refines it (the same scheme as the `_IdentityModified` closed form). The
-# comparisons act on values, so under AD the knots carry no derivative — correct
-# because the integrand is exactly zero at a knot (envelope theorem). Skipped
-# for an unbounded-below base (an additive clamp there is ill-posed anyway; a
+# clamped interval. Delegates the scan-and-bisect to `_scan_crossings` (shared
+# with the `_IdentityModified` closed form's clamp knots). Skipped for an
+# unbounded-below base (an additive clamp there is ill-posed anyway; a
 # proportional effect never clamps, so there are no interior knots to find).
-const _KNOT_SCAN = 256
-
 function _clamp_knots(d::Modified, lo::Real, hi::Real)
-    knots = typeof(float(lo))[]
-    (isfinite(lo) && isfinite(hi)) || return knots
-    n = _KNOT_SCAN
-    step = (hi - lo) / n
-    step > zero(step) || return knots
-    s(u) = _raw_mod_hazard(d, u)
-    prev = s(lo)
-    for i in 1:n
-        cur_u = i == n ? hi : lo + i * step
-        cur = s(cur_u)
-        if (prev < 0) != (cur < 0)
-            a = i == 1 ? lo : lo + (i - 1) * step
-            b = cur_u
-            for _ in 1:60
-                mid = (a + b) / 2
-                (s(a) < 0) == (s(mid) < 0) ? (a = mid) : (b = mid)
-            end
-            push!(knots, (a + b) / 2)
-        end
-        prev = cur
-    end
-    return knots
+    (isfinite(lo) && isfinite(hi)) || return typeof(float(lo))[]
+    return _scan_crossings(u -> _raw_mod_hazard(d, u), lo, hi)
 end
 
 # An upper limit for the clamp-knot scan tied to the base's own scale (a deep

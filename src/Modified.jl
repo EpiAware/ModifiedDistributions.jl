@@ -12,6 +12,14 @@ function _logit(p::Real)
 end
 _logistic(x::Real) = inv(one(x) + exp(-x))
 
+# The unclamped logit, used only where `LogitLink` is applied to a continuous
+# base's hazard (the numeric cumulative-hazard path). There the hazard is a
+# rate in [0, ∞), not a probability, so a value outside (0, 1) is genuinely
+# out of domain and must throw rather than silently pin to the same saturated
+# constant `_logit` would return. `log` and `log1p` throw `DomainError` for a
+# negative argument, which covers both `p < 0` and `p > 1` here.
+_logit_strict(p::Real) = log(p) - log1p(-p)
+
 # log(1 - exp(x)) for x <= 0, numerically stable (Maechler 2012). Local
 # equivalent of LogExpFunctions.log1mexp, kept here so Distributions stays the
 # only dependency.
@@ -500,37 +508,41 @@ function _base_hazard(dist, u)
     return exp(logpdf(dist, u) - logS)
 end
 
-# Locate the clamp knots in `(lo, hi)`: the points where the base hazard
-# crosses the level `c = -β`, so the clamped integrand `max(h + β, 0)` switches
-# between active and clamped. A coarse scan brackets each sign change and
-# bisection refines it. The scan level `c` may be a `Dual` (β differentiated),
-# but the comparisons act on its value component, so the returned knots carry no
-# derivative — correct because at a knot the integrand is exactly zero, so the
-# moving boundary contributes nothing to the derivative (envelope theorem).
+# Scan `[lo, hi]` for sign changes of `f`, bisecting each bracket down to a
+# knot. Shared by the identity closed form (`f` is the base hazard offset by a
+# clamp level `c = -β`) and the QuadGK extension's numeric path (`f` is the
+# unclamped modified hazard, clamp level 0): both locate the points where a
+# clamped rate switches between active and clamped. `f` may return a `Dual`
+# (an effect or base parameter differentiated), but the comparisons act on its
+# value component, so the returned knots carry no derivative — correct because
+# at a knot the integrand is exactly zero, so the moving boundary contributes
+# nothing to the derivative (envelope theorem).
 const _HAZARD_SCAN = 256
 
-function _hazard_crossings(dist, lo::Real, hi::Real, c::Real)
+function _scan_crossings(f, lo::Real, hi::Real; n::Int = _HAZARD_SCAN)
     knots = typeof(float(lo))[]
-    n = _HAZARD_SCAN
     step = (hi - lo) / n
     step > zero(step) || return knots
-    g(u) = _base_hazard(dist, u) - c
-    prev_g = g(lo)
+    prev = f(lo)
     for i in 1:n
         cur_u = i == n ? hi : lo + i * step
-        cur_g = g(cur_u)
-        if (prev_g < 0) != (cur_g < 0)
+        cur = f(cur_u)
+        if (prev < 0) != (cur < 0)
             a = i == 1 ? lo : lo + (i - 1) * step
             b = cur_u
             for _ in 1:60
                 mid = (a + b) / 2
-                (g(a) < 0) == (g(mid) < 0) ? (a = mid) : (b = mid)
+                (f(a) < 0) == (f(mid) < 0) ? (a = mid) : (b = mid)
             end
             push!(knots, (a + b) / 2)
         end
-        prev_g = cur_g
+        prev = cur
     end
     return knots
+end
+
+function _hazard_crossings(dist, lo::Real, hi::Real, c::Real)
+    return _scan_crossings(u -> _base_hazard(dist, u) - c, lo, hi)
 end
 
 # The clamped additive cumulative hazard H*(x) = ∫ₘˣ max(h(u) + β, 0) du,
