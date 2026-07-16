@@ -37,6 +37,13 @@ public IdentityLink
 public LogitLink
 public hazard_link
 
+# The discrete-time reporting-hazard vector helpers reused by the discrete
+# `modify` path (public but not exported): the PMF <-> hazard maps and the
+# per-bin logit-effect reshaping.
+public delay_hazard
+public hazard_to_pmf
+public apply_hazard_effects
+
 # The modifier-payload accessors (public but not exported, mirroring the
 # wrapper types). They expose the modification data each leaf carries so
 # downstream code (notably ComposedDistributions' modifier extension) reads
