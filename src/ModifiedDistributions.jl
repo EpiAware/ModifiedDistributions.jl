@@ -37,6 +37,7 @@ import Distributions: params, insupport, pdf, logpdf, cdf, logcdf,
 import Base: minimum, maximum
 # Types and constructors we use without extension.
 using Distributions: Distributions, Distribution, UnivariateDistribution,
+                     DiscreteUnivariateDistribution,
                      VariateForm, Univariate, Continuous, Discrete,
                      ValueSupport, Product, product_distribution
 
@@ -68,6 +69,9 @@ include("Affine.jl")
 include("Weighted.jl")
 include("Transformed.jl")
 include("Modified.jl")
+# Discrete-time reporting-hazard vector helpers reused by the discrete
+# Modified path; included after Modified.jl defines the link types.
+include("reporting_hazard.jl")
 include("get_dist.jl")
 
 # Public field accessors for the modifier payloads (get_scale/get_shift,

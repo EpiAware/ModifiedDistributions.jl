@@ -21,7 +21,11 @@ const LIGHT_TUTORIALS = [
 
 # Heavy tutorials (live MCMC fits, multi-backend AD, plotting) are each
 # executed once in a fresh subprocess so native/memory state cannot accumulate.
-const HEAVY_TUTORIALS = String[]
+# The AD-backends page runs DifferentiationInterfaceTest benchmarks over every
+# registry backend plus CairoMakie plotting, exactly the heavy workload.
+const HEAVY_TUTORIALS = [
+    "ad-backends.jl"
+]
 
 # Where the tutorial `.jl` sources and rendered `.md` pages live, relative to
 # `docs/src`.
@@ -31,7 +35,9 @@ const TUTORIALS_SUBDIR = joinpath("getting-started", "tutorials")
 # heading should preserve the tutorial's `@id` (e.g.
 # `"# [Title](@id my-anchor)"`) so cross-references from other pages still
 # resolve in a fast build.
-const TUTORIAL_STUBS = Pair{String, String}[]
+const TUTORIAL_STUBS = [
+    "ad-backends.md" => "# [Automatic differentiation backends](@id ad-backends)"
+]
 
 # Regexes for URLs to skip during the (full-build) linkcheck, e.g. a page
 # published by a separate workflow that is not yet live.
