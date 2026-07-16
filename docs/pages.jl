@@ -16,7 +16,8 @@ pages = [
             "A modifier pipeline" => "getting-started/tutorials/modifier-pipeline.md",
             "Modifiers across composed chains" => "getting-started/tutorials/composed-chains.md",
             "Convolving modified distributions" => "getting-started/tutorials/convolved-modifiers.md",
-            "Lowering modifiers to dynamical systems" => "getting-started/tutorials/lowering.md"
+            "Lowering modifiers to dynamical systems" => "getting-started/tutorials/lowering.md",
+            "Automatic differentiation backends" => "getting-started/tutorials/ad-backends.md"
         ],
         "Julia" => "getting-started/julia.md",
         "FAQ" => "getting-started/faq.md"
