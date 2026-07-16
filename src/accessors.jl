@@ -78,7 +78,9 @@ get_weight(d::Weighted) = d.weight
 
 Return the hazard effect of a [`Modified`](@ref) distribution.
 
-The scalar hazard modification on the link scale (see [`modify`](@ref)).
+The hazard modification on the link scale (see [`modify`](@ref)). It is a
+scalar, a callable `effect(t)`, or a per-bin vector for a discrete base,
+returned as stored.
 
 # Arguments
 - `d`: a [`Modified`](@ref) distribution.
