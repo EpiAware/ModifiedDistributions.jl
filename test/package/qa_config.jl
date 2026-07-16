@@ -21,8 +21,8 @@ const QA_CONFIG = (
     # package's own internal forward-op peeling and batched-evaluation
     # traits. The AD-safe hook family and primal helpers it extends are
     # public exports of EpiAwareADTools (#137), so they need no ignore entry.
-    ei_ignore = (:_IdentityModified, :_LogModified, :_apply_forward_ops,
-        :_has_batched_method, :_log1mexp, :_peel_forward),
+    ei_ignore = (:_IdentityModified, :_LogModified, :_NumericModified,
+        :_apply_forward_ops, :_has_batched_method, :_log1mexp, :_peel_forward),
 
     # Docstring `crossref_ignore`: upstream names docstrings link to via
     # `[`name`](@ref)`, e.g. (:pdf, :cdf, :logpdf).
@@ -51,5 +51,8 @@ const QA_CONFIG = (
             prefixes = ("ModifiedDistributions", "ComposedDistributions")),
         (; name = :ModifiedDistributionsConvolvedDistributionsExt,
             triggers = ("ConvolvedDistributions",),
-            prefixes = ("ModifiedDistributions", "ConvolvedDistributions")))
+            prefixes = ("ModifiedDistributions", "ConvolvedDistributions")),
+        (; name = :ModifiedDistributionsQuadGKExt,
+            triggers = ("QuadGK",),
+            prefixes = ("ModifiedDistributions", "QuadGK")))
 )
