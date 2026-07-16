@@ -32,6 +32,10 @@
     # A per-bin vector effect on a continuous base is rejected.
     @test_throws ArgumentError modify(base, [0.1, 0.2, 0.3])
 
+    # A continuous base needs a scalar `Real` or a callable effect; any other
+    # type (here a tuple) is rejected clearly at construction.
+    @test_throws ArgumentError modify(base, (0.1, 0.2))
+
     # Negative additive (identity link) effects are now accepted: the clamped
     # closed-form additive-hazard path handles them in core (no quadrature).
     dneg = modify(base, -0.1; link = identity)

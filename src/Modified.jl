@@ -752,19 +752,17 @@ function quantile(d::_NumericModified, p::Real)
     p == zero(p) && return float(minimum(d))
     p == one(p) && return float(maximum(d))
     lo = float(minimum(d))
-    hi = float(quantile(d.dist, p))
-    hi <= lo && (hi = lo + one(lo))
     # A time-varying or general-link modification can widen the law past the
-    # base quantile, so expand the upper bracket until it covers `p`, capped at
-    # a deep base quantile. A clamped hazard can leave the law defective
-    # (sub-stochastic); a cdf that has not reached `p` by the cap means `p`
-    # exceeds the total mass, so the quantile is undefined.
-    hicap = float(quantile(d.dist, 1 - 1e-12))
-    (isfinite(hicap) && hicap > lo) || (hicap = float(maximum(d)))
-    isfinite(hicap) || (hicap = lo + (hi - lo) * 2.0^20)
-    while hi < hicap && cdf(d, hi) < p
-        hi = min(hicap, lo + 2 * (hi - lo))
+    # base quantile, so start at the base quantile (kept strictly above `lo`)
+    # and double the bracket until the cdf covers `p`. The doubling is bounded
+    # so a defective (sub-stochastic) clamped law does not loop forever.
+    hi = max(float(quantile(d.dist, p)), lo + one(lo) / 2)
+    for _ in 1:200
+        cdf(d, hi) >= p && break
+        hi = lo + 2 * (hi - lo)
     end
+    # A clamped hazard can leave the law defective; a cdf still below `p` after
+    # the expansion means `p` exceeds the total mass, so there is no quantile.
     cdf(d, hi) >= p || throw(ArgumentError(
         "the modified law is defective (sub-stochastic) for this effect " *
         "and base: its total probability mass is below $(p), so the " *
