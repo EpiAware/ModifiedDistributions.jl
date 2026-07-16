@@ -32,6 +32,10 @@
     # A per-bin vector effect on a continuous base is rejected.
     @test_throws ArgumentError modify(base, [0.1, 0.2, 0.3])
 
+    # A continuous base needs a scalar `Real` or a callable effect; any other
+    # type (here a tuple) is rejected clearly at construction.
+    @test_throws ArgumentError modify(base, (0.1, 0.2))
+
     # Negative additive (identity link) effects are now accepted: the clamped
     # closed-form additive-hazard path handles them in core (no quadrature).
     dneg = modify(base, -0.1; link = identity)
@@ -39,21 +43,21 @@
     @test ModifiedDistributions.get_effect(dneg) == -0.1
 
     # A callable effect on a continuous base constructs (its evaluation is the
-    # deferred numeric path, issue #77b); get_effect returns the callable.
+    # numeric quadrature path, #77b); get_effect returns the callable.
     fx = t -> 0.1 * t
     dcall = modify(base, fx)
     @test dcall isa ModifiedDistributions.Modified
     @test ModifiedDistributions.get_effect(dcall) === fx
 
-    # General links on a CONTINUOUS base still need numeric integration and are
-    # rejected at construction (deferred, issue #77b).
-    @test_throws ArgumentError modify(base, 0.5; link = :logit)
-    @test_throws ArgumentError modify(
-        base, 0.5; link = ModifiedDistributions.LogitLink)
+    # General links on a CONTINUOUS base now construct too: they take the
+    # numeric cumulative-hazard path (evaluated by the QuadGK extension, #77b).
+    @test modify(base, 0.5; link = :logit) isa ModifiedDistributions.Modified
+    @test modify(base, 0.5; link = ModifiedDistributions.LogitLink) isa
+          ModifiedDistributions.Modified
     cloglog = ModifiedDistributions.hazard_link(
         h -> log(-log1p(-h)), eta -> -expm1(-exp(eta)))
     @test cloglog isa ModifiedDistributions.HazardLink
-    @test_throws ArgumentError modify(base, 0.5; link = cloglog)
+    @test modify(base, 0.5; link = cloglog) isa ModifiedDistributions.Modified
 
     # A discrete base accepts a per-bin vector effect under ANY link (the
     # per-bin reconstruction is link-agnostic and needs no numeric integration).
@@ -230,26 +234,29 @@ end
     end
 end
 
-@testitem "Modified callable effect constructs, evaluation deferred (#77b)" begin
+@testitem "Modified callable effect evaluates via the numeric path (#77b)" begin
     using Distributions
+    using QuadGK
 
     base = LogNormal(1.5, 0.5)
 
     # A callable effect on a continuous base is a time-varying hazard whose
-    # cumulative-hazard integral has no closed form, so its evaluation is the
-    # deferred numeric path (#77b). Construction succeeds; get_effect returns
-    # the callable; params drops it (a callable carries no numeric parameters).
+    # cumulative-hazard integral has no closed form, so it takes the numeric
+    # path (evaluated by the QuadGK extension, #77b). Construction succeeds;
+    # get_effect returns the callable; params drops it (a callable carries no
+    # numeric parameters).
     for link in (log, identity)
         d = modify(base, t -> 0.1 * t; link = link)
         @test d isa ModifiedDistributions.Modified
         @test ModifiedDistributions.get_effect(d)(2.0) ≈ 0.2
         @test params(d) == params(base)
-        # Below the support survival is one; in-support evaluation throws the
-        # guiding deferred-path ArgumentError until the numeric path lands.
+        # Below the support survival is one; in-support evaluation is finite and
+        # coherent (survival in [0, 1], density non-negative, cdf = 1 - ccdf).
         @test logccdf(d, 0.0) == 0.0
-        @test_throws ArgumentError logpdf(d, 2.0)
-        @test_throws ArgumentError logccdf(d, 2.0)
-        @test_throws ArgumentError cdf(d, 2.0)
+        @test isfinite(logpdf(d, 2.0))
+        @test 0.0 <= ccdf(d, 2.0) <= 1.0
+        @test cdf(d, 2.0) ≈ 1 - ccdf(d, 2.0)
+        @test pdf(d, 2.0) >= 0.0
     end
 end
 

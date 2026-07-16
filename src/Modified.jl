@@ -12,6 +12,14 @@ function _logit(p::Real)
 end
 _logistic(x::Real) = inv(one(x) + exp(-x))
 
+# The unclamped logit, used only where `LogitLink` is applied to a continuous
+# base's hazard (the numeric cumulative-hazard path). There the hazard is a
+# rate in [0, ∞), not a probability, so a value outside (0, 1) is genuinely
+# out of domain and must throw rather than silently pin to the same saturated
+# constant `_logit` would return. `log` and `log1p` throw `DomainError` for a
+# negative argument, which covers both `p < 0` and `p > 1` here.
+_logit_strict(p::Real) = log(p) - log1p(-p)
+
 # log(1 - exp(x)) for x <= 0, numerically stable (Maechler 2012). Local
 # equivalent of LogExpFunctions.log1mexp, kept here so Distributions stays the
 # only dependency.
@@ -43,8 +51,9 @@ so `log` gives proportional hazards and `identity` gives additive hazards. A
 `HazardLink` pairs the link `g` with its inverse `invlink` (`g⁻¹`); the three
 named links ([`LogLink`](@ref), [`IdentityLink`](@ref), [`LogitLink`](@ref))
 are built-in, and any invertible callable can be wrapped with
-[`hazard_link`](@ref). Only the log and identity links have analytic forms;
-[`modify`](@ref) rejects the others until numeric integration is supported.
+[`hazard_link`](@ref). The log and identity links have analytic forms; a
+general link takes the numeric cumulative-hazard path, enabled by loading a
+quadrature backend (`using QuadGK`).
 
 # See also
 - [`modify`](@ref): the verb that builds a [`Modified`](@ref) distribution.
@@ -112,10 +121,11 @@ const IdentityLink = HazardLink(identity, identity)
 The logit link (discrete-time reporting hazard): `g = logit`, `g⁻¹ = logistic`.
 
 `LogitLink` pairs the logit with its logistic inverse, the link for a
-discrete-time reporting hazard on a discrete base with a per-bin effect vector.
-On a continuous base it requires numeric cumulative-hazard integration, which
-this package does not yet provide (that path is deferred, see issue #77b), so
-[`modify`](@ref) rejects it there with an `ArgumentError`.
+discrete-time reporting hazard on a discrete base with a per-bin effect vector,
+where each bin's hazard is a probability in `(0, 1)`. On a continuous base the
+hazard is a rate that can exceed one, where the logit is not meaningful; the
+rate links [`LogLink`](@ref) and [`IdentityLink`](@ref) (or a custom
+[`hazard_link`](@ref)) are the continuous-base choices.
 
 # Examples
 ```@example
@@ -151,9 +161,15 @@ Wrap a link and its inverse as a [`HazardLink`](@ref).
 The link `g` maps a hazard onto the scale the additive `effect` acts on, and
 `invlink` maps back. Use the built-in [`LogLink`](@ref) or
 [`IdentityLink`](@ref) for the analytic choices; this constructor is for a
-user-supplied invertible callable. Note that [`modify`](@ref) currently
-rejects links other than log and identity, since general links need numeric
-cumulative-hazard integration.
+user-supplied invertible callable. A general link takes the numeric
+cumulative-hazard path, so [`modify`](@ref) with one needs a quadrature backend
+(`using QuadGK`) to evaluate.
+
+On a continuous base the hazard is a rate in `[0, ∞)`, so `g` must accept that
+whole range: a rate link (like `log`) works, but a probability link whose
+domain is `(0, 1)` (logit, cloglog) errors where the base hazard exceeds one.
+The cloglog example below is a valid rate transform only on a base whose hazard
+stays below one.
 
 # Arguments
 - `g`: the link function `g`.
@@ -216,15 +232,15 @@ the link:
   clamp knots (no quadrature);
 - discrete base, per-bin vector effect: exact per-bin PMF reconstruction
   through the discrete-time reporting hazard, for any link;
-- continuous base, callable `effect(t)`: the modified cumulative hazard is
-  time-varying and needs numeric integration. That path is deferred (issue
-  #77b) pending the ConvolvedDistributions extension rework, so a callable
-  effect constructs but evaluating it throws an `ArgumentError`.
+- continuous base, callable `effect(t)` (any link) or a scalar effect under a
+  general link: the modified cumulative hazard
+  ``H^{*}(t) = \\int_m^t \\max(g^{-1}(g(h(u)) + \\text{effect}(u)), 0)\\,du``
+  has no closed form and takes the numeric path, evaluated by quadrature. The
+  `Modified` constructs freely, but evaluating it needs a quadrature backend
+  loaded (`using QuadGK`, supplied by `ModifiedDistributionsQuadGKExt`);
+  without one it throws an `ArgumentError` pointing at the backend.
 
-A general link (`:logit` or a custom [`hazard_link`](@ref)) on a *continuous*
-base likewise needs numeric integration and is rejected at construction until
-that path lands; on a *discrete* base every link works through the per-bin
-reconstruction.
+Every link works on a *discrete* base through the per-bin reconstruction.
 
 # Fields
 - `dist`: the base distribution whose hazard is modified.
@@ -259,23 +275,25 @@ struct Modified{D <: UnivariateDistribution, E, L <: HazardLink,
                 "a discrete base distribution requires a per-bin vector " *
                 "effect (the discrete-time reporting-hazard path); a scalar " *
                 "or callable effect modifies a continuous base"))
+        elseif !(effect isa Real || effect isa Function)
+            throw(ArgumentError(
+                "a continuous base distribution needs a scalar `Real` effect " *
+                "or a callable `effect(t)`; got effect::$(typeof(effect))"))
         elseif L === typeof(IdentityLink) && effect isa Real
             # The additive closed forms (both the non-negative and the clamped
             # negative branch) accrue the extra hazard from the support
-            # minimum, so they need a finite lower support bound.
+            # minimum, so they need a finite lower support bound. A callable or
+            # general-link effect takes the numeric path instead, which
+            # integrates from the support minimum with no such requirement.
             isfinite(minimum(dist)) ||
                 throw(ArgumentError(
                     "additive-hazard modification needs a base " *
                     "distribution with a finite lower support bound"))
-        elseif L !== typeof(LogLink) && L !== typeof(IdentityLink)
-            # A general link on a continuous base needs numeric
-            # cumulative-hazard integration, deferred to issue #77b.
-            throw(ArgumentError(
-                "general hazard links on a continuous base require numeric " *
-                "integration, not yet supported (deferred, see issue #77b) " *
-                "— use link = log or link = identity on a continuous base, " *
-                "or a per-bin vector effect on a discrete base"))
         end
+        # Anything else on a continuous base — a callable time-varying effect
+        # (any link), or a scalar effect under a general link (neither log nor
+        # identity) — takes the numeric cumulative-hazard path, which needs a
+        # quadrature backend (`using QuadGK`) to evaluate but constructs freely.
         new{D, E, L, Distributions.value_support(D)}(dist, effect, link)
     end
 end
@@ -302,12 +320,16 @@ chosen by dispatch:
 - a per-bin vector effect requires a discrete base and reshapes each delay
   bin's reporting hazard on the link scale, reconstructing the PMF exactly, for
   any link (including `:logit` or a user callable);
-- a callable `effect(t)` on a continuous base is time-varying and needs the
-  numeric cumulative-hazard path, which is deferred (issue #77b): it constructs
-  but evaluating it throws until that path lands.
+- a callable `effect(t)` on a continuous base (any link), or a scalar effect
+  under a general link, is time-varying and takes the numeric cumulative-hazard
+  path. It constructs freely, but evaluating it needs a quadrature backend
+  loaded (`using QuadGK`); without one it throws an `ArgumentError` naming the
+  backend.
 
-A general link (`:logit` or a custom [`hazard_link`](@ref)) on a continuous
-base is likewise rejected at construction pending the numeric path.
+A general link (a custom [`hazard_link`](@ref)) on a continuous base takes the
+same numeric path. The `:logit` link is a probability link for a discrete base;
+on a continuous base, whose hazard is a rate that can exceed one, use a rate
+link (`log`, `identity`, or a custom `hazard_link`).
 
 # Arguments
 - `d`: the base distribution (continuous for a scalar/callable effect, discrete
@@ -486,37 +508,41 @@ function _base_hazard(dist, u)
     return exp(logpdf(dist, u) - logS)
 end
 
-# Locate the clamp knots in `(lo, hi)`: the points where the base hazard
-# crosses the level `c = -β`, so the clamped integrand `max(h + β, 0)` switches
-# between active and clamped. A coarse scan brackets each sign change and
-# bisection refines it. The scan level `c` may be a `Dual` (β differentiated),
-# but the comparisons act on its value component, so the returned knots carry no
-# derivative — correct because at a knot the integrand is exactly zero, so the
-# moving boundary contributes nothing to the derivative (envelope theorem).
+# Scan `[lo, hi]` for sign changes of `f`, bisecting each bracket down to a
+# knot. Shared by the identity closed form (`f` is the base hazard offset by a
+# clamp level `c = -β`) and the QuadGK extension's numeric path (`f` is the
+# unclamped modified hazard, clamp level 0): both locate the points where a
+# clamped rate switches between active and clamped. `f` may return a `Dual`
+# (an effect or base parameter differentiated), but the comparisons act on its
+# value component, so the returned knots carry no derivative — correct because
+# at a knot the integrand is exactly zero, so the moving boundary contributes
+# nothing to the derivative (envelope theorem).
 const _HAZARD_SCAN = 256
 
-function _hazard_crossings(dist, lo::Real, hi::Real, c::Real)
+function _scan_crossings(f, lo::Real, hi::Real; n::Int = _HAZARD_SCAN)
     knots = typeof(float(lo))[]
-    n = _HAZARD_SCAN
     step = (hi - lo) / n
     step > zero(step) || return knots
-    g(u) = _base_hazard(dist, u) - c
-    prev_g = g(lo)
+    prev = f(lo)
     for i in 1:n
         cur_u = i == n ? hi : lo + i * step
-        cur_g = g(cur_u)
-        if (prev_g < 0) != (cur_g < 0)
+        cur = f(cur_u)
+        if (prev < 0) != (cur < 0)
             a = i == 1 ? lo : lo + (i - 1) * step
             b = cur_u
             for _ in 1:60
                 mid = (a + b) / 2
-                (g(a) < 0) == (g(mid) < 0) ? (a = mid) : (b = mid)
+                (f(a) < 0) == (f(mid) < 0) ? (a = mid) : (b = mid)
             end
             push!(knots, (a + b) / 2)
         end
-        prev_g = cur_g
+        prev = cur
     end
     return knots
+end
+
+function _hazard_crossings(dist, lo::Real, hi::Real, c::Real)
+    return _scan_crossings(u -> _base_hazard(dist, u) - c, lo, hi)
 end
 
 # The clamped additive cumulative hazard H*(x) = ∫ₘˣ max(h(u) + β, 0) du,
@@ -633,52 +659,58 @@ function quantile(d::_IdentityModified, p::Real)
 end
 
 # ============================================================================
-# Continuous, callable effect: numeric cumulative-hazard path (deferred, #77b)
+# Continuous, numeric cumulative-hazard path (callable or general-link effect)
 # ============================================================================
 #
-# A callable effect(t) on a continuous base gives a time-varying modified
-# cumulative hazard H*(t) = ∫ₘᵗ g⁻¹(g(h(u)) + effect(u)) du with no closed form,
-# so it needs numeric integration. That path is deferred to issue #77b (the
-# ConvolvedDistributions extension rework, CD#170). Core routes it through the
-# `_numeric_*` seams, which throw a guiding error until the numeric path lands;
-# constructing such a `Modified` still succeeds so downstream code can build it.
+# When the modified cumulative hazard H*(t) = ∫ₘᵗ g⁻¹(g(h(u)) + effect(u)) du
+# has no closed form — a callable time-varying `effect(t)` (any link), or a
+# scalar effect under a general link (neither log nor identity) — it needs
+# numeric integration. Core routes those cases through the `_numeric_*` seams
+# and gives them a fallback that asks for a quadrature backend; the real methods
+# are supplied by `ModifiedDistributionsQuadGKExt` when QuadGK is loaded (#77b).
+# Constructing such a `Modified` always succeeds so downstream code can build.
 
-const _CALLABLE_PATH_MSG = string(
-    "a callable time-varying `effect(t)` on a continuous base needs the ",
-    "numeric cumulative-hazard path, which is deferred (issue #77b) pending ",
-    "the ConvolvedDistributions extension rework (CD#170); use a scalar ",
+const _NUMERIC_PATH_MSG = string(
+    "the numeric hazard path — a callable time-varying `effect(t)`, or a ",
+    "general hazard link on a continuous base — needs a quadrature backend; ",
+    "load QuadGK (`using QuadGK`) to enable it. A scalar `log`/`identity` ",
     "effect on a continuous base, or a per-bin vector effect on a discrete ",
-    "base")
+    "base, uses a closed form and needs no backend.")
 
-# The modified log-survival `logS*(t) = -H*(t)` on the numeric path. The real
-# method lands with the numeric path; this stub throws until then.
-_numeric_logccdf(::Modified, x) = throw(ArgumentError(_CALLABLE_PATH_MSG))
+# The modified log-survival `logS*(t) = -H*(t)` on the numeric path. The
+# fallback asks for a backend; `ModifiedDistributionsQuadGKExt` specialises it.
+_numeric_logccdf(::Modified, x) = throw(ArgumentError(_NUMERIC_PATH_MSG))
 
-# The modified log-density `log h*(t) - H*(t)` on the numeric path. The real
-# method lands with the numeric path; this stub throws until then.
-_numeric_logpdf(::Modified, x) = throw(ArgumentError(_CALLABLE_PATH_MSG))
+# The modified log-density `log h*(t) - H*(t)` on the numeric path. The
+# fallback asks for a backend; `ModifiedDistributionsQuadGKExt` specialises it.
+_numeric_logpdf(::Modified, x) = throw(ArgumentError(_NUMERIC_PATH_MSG))
 
-const _CallableModified = Modified{
-    <:UnivariateDistribution{Continuous}, <:Function}
+# The numeric path covers a continuous base with either a callable effect (any
+# link) or a scalar effect under a general link. The two scalar closed-form
+# sets (`_LogModified`, `_IdentityModified`) are strictly more specific, so they
+# win for the log and identity links; every other continuous case falls here.
+const _NumericModified = Union{
+    Modified{<:UnivariateDistribution{Continuous}, <:Function},
+    Modified{<:UnivariateDistribution{Continuous}, <:Real, <:HazardLink}}
 
 @doc "
 
-Compute the log survival function on the numeric (callable-effect) path.
+Compute the log survival function on the numeric cumulative-hazard path.
 
 See also: [`ccdf`](@ref), [`logpdf`](@ref)
 "
-function logccdf(d::_CallableModified, x::Real)
+function logccdf(d::_NumericModified, x::Real)
     x <= minimum(d.dist) && return zero(float(typeof(x)))
     return _numeric_logccdf(d, x)
 end
 
 @doc "
 
-Compute the log probability density on the numeric (callable-effect) path.
+Compute the log probability density on the numeric cumulative-hazard path.
 
 See also: [`pdf`](@ref), [`ccdf`](@ref)
 "
-function logpdf(d::_CallableModified, x::Real)
+function logpdf(d::_NumericModified, x::Real)
     insupport(d, x) || return oftype(float(x), -Inf)
     return _numeric_logpdf(d, x)
 end
@@ -722,17 +754,32 @@ See also: [`cdf`](@ref)
 "
 logcdf(d::_ContinuousModified, x::Real) = _log1mexp(logccdf(d, x))
 
-# The identity and callable paths sample by quantile inversion of a uniform
-# draw; the log link overrides `rand` with its closed form above. The generic
-# quantile (bracketed bisection of the monotone cdf) also covers the callable
-# path, whose cdf raises the deferred-path error.
-function quantile(d::_CallableModified, p::Real)
+# The identity and numeric paths sample by quantile inversion of a uniform
+# draw; the log link overrides `rand` with its closed form above. The bracketed
+# bisection of the monotone cdf covers the numeric path, whose cdf routes
+# through the quadrature backend (or raises the load-QuadGK fallback).
+function quantile(d::_NumericModified, p::Real)
     zero(p) <= p <= one(p) ||
         throw(DomainError(p, "quantile requires p in [0, 1]"))
     p == zero(p) && return float(minimum(d))
     p == one(p) && return float(maximum(d))
     lo = float(minimum(d))
-    hi = float(quantile(d.dist, p))
+    # A time-varying or general-link modification can widen the law past the
+    # base quantile, so start at the base quantile (kept strictly above `lo`)
+    # and double the bracket until the cdf covers `p`. The doubling is bounded
+    # so a defective (sub-stochastic) clamped law does not loop forever.
+    hi = max(float(quantile(d.dist, p)), lo + one(lo) / 2)
+    for _ in 1:200
+        cdf(d, hi) >= p && break
+        hi = lo + 2 * (hi - lo)
+    end
+    # A clamped hazard can leave the law defective; a cdf still below `p` after
+    # the expansion means `p` exceeds the total mass, so there is no quantile.
+    cdf(d, hi) >= p || throw(ArgumentError(
+        "the modified law is defective (sub-stochastic) for this effect " *
+        "and base: its total probability mass is below $(p), so the " *
+        "$(p)-quantile is undefined. A clamped time-varying hazard can " *
+        "integrate to less than one."))
     while true
         mid = (lo + hi) / 2
         (mid == lo || mid == hi) && break
@@ -744,7 +791,7 @@ end
 function Base.rand(rng::AbstractRNG, d::_IdentityModified)
     return quantile(d, rand(rng))
 end
-function Base.rand(rng::AbstractRNG, d::_CallableModified)
+function Base.rand(rng::AbstractRNG, d::_NumericModified)
     return quantile(d, rand(rng))
 end
 
