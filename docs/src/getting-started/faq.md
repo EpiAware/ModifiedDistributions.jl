@@ -56,11 +56,19 @@ Yes.
 Each modifier is a thin wrapper around whatever you pass it, so `weight(affine(d; scale = 2), 10)` and `affine(weight(d, 10); scale = 2)` both work.
 Order matters for meaning, not validity: modify the distribution first, then weight the resulting likelihood term, unless you have a reason to do otherwise.
 
-## Why does `modify` reject my discrete distribution or negative additive effect?
+## Which hazard modifications does `modify` support?
 
-The hazard-modification maths implemented here is the closed-form continuous path.
-The discrete (interval-censored) path lives upstream in [CensoredDistributions.jl](https://github.com/EpiAware/CensoredDistributions.jl), where the interval types live.
-Negative additive effects need hazard clamping and numeric integration of the cumulative hazard (see CensoredDistributions#670) — not yet ported; use the `log` link for hazard reductions (`modify(d, -0.5)` with the default link scales the hazard by `exp(-0.5)`).
+The `effect` is a scalar, a callable `effect(t)`, or a per-bin vector, and the path is chosen by the base and the link.
+
+A scalar effect on a continuous base uses a closed form: the `log` link scales the survival (proportional hazards), and the `identity` link adds a constant hazard.
+The `identity` link now also accepts a *negative* effect: the hazard is clamped to `max(h(t) + β, 0)` and the survival is reconstructed exactly from the base cumulative hazard between the clamp knots, with no quadrature.
+A base with a non-monotone hazard can be left sub-stochastic (defective) by a strong negative effect, and `quantile`/`rand` above the total mass then throw.
+
+A discrete base takes a per-bin vector effect and reshapes each delay bin's reporting hazard on the link scale, reconstructing the PMF exactly, for any link (including `:logit` or a user callable) — the epinowcast discrete-time reporting hazard.
+
+A callable `effect(t)` on a continuous base is a time-varying hazard with no closed-form cumulative hazard, so it needs numeric integration.
+That numeric path (and a general `:logit`/custom link on a continuous base) is deferred, tracked in [issue #77](https://github.com/EpiAware/ModifiedDistributions.jl/issues/77) part (b): such a `Modified` constructs, but evaluating it throws until the path lands.
+The epinowcast reference-by-report expected-count matrix layer stays upstream in [CensoredDistributions.jl](https://github.com/EpiAware/CensoredDistributions.jl).
 
 ## Does this work with composed distribution chains?
 

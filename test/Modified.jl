@@ -25,13 +25,28 @@
     # Unknown link symbols throw.
     @test_throws ArgumentError modify(base, 0.5; link = :cloglog)
 
-    # Non-continuous inner distributions are rejected.
+    # A discrete base with a scalar effect is rejected: the discrete path needs
+    # a per-bin vector effect.
     @test_throws ArgumentError modify(Poisson(3.0), 0.5)
 
-    # Negative additive (identity link) effects are rejected.
-    @test_throws ArgumentError modify(base, -0.1; link = identity)
+    # A per-bin vector effect on a continuous base is rejected.
+    @test_throws ArgumentError modify(base, [0.1, 0.2, 0.3])
 
-    # General links need numeric integration and are not yet supported.
+    # Negative additive (identity link) effects are now accepted: the clamped
+    # closed-form additive-hazard path handles them in core (no quadrature).
+    dneg = modify(base, -0.1; link = identity)
+    @test dneg isa ModifiedDistributions.Modified
+    @test ModifiedDistributions.get_effect(dneg) == -0.1
+
+    # A callable effect on a continuous base constructs (its evaluation is the
+    # deferred numeric path, issue #77b); get_effect returns the callable.
+    fx = t -> 0.1 * t
+    dcall = modify(base, fx)
+    @test dcall isa ModifiedDistributions.Modified
+    @test ModifiedDistributions.get_effect(dcall) === fx
+
+    # General links on a CONTINUOUS base still need numeric integration and are
+    # rejected at construction (deferred, issue #77b).
     @test_throws ArgumentError modify(base, 0.5; link = :logit)
     @test_throws ArgumentError modify(
         base, 0.5; link = ModifiedDistributions.LogitLink)
@@ -39,6 +54,19 @@
         h -> log(-log1p(-h)), eta -> -expm1(-exp(eta)))
     @test cloglog isa ModifiedDistributions.HazardLink
     @test_throws ArgumentError modify(base, 0.5; link = cloglog)
+
+    # A discrete base accepts a per-bin vector effect under ANY link (the
+    # per-bin reconstruction is link-agnostic and needs no numeric integration).
+    disc = DiscreteNonParametric(collect(0:4), fill(0.2, 5))
+    for lk in (:logit, log, identity, cloglog)
+        @test modify(disc, fill(0.1, 5); link = lk) isa
+              ModifiedDistributions.Modified
+    end
+
+    # A per-bin vector on a discrete base makes the Modified a discrete
+    # univariate distribution (value support propagates from the base).
+    @test modify(disc, fill(0.1, 5)) isa UnivariateDistribution{Discrete}
+    @test modify(base, 0.5) isa UnivariateDistribution{Continuous}
 end
 
 @testitem "Modified support, params, get_dist and nothing passthrough" begin
@@ -200,4 +228,245 @@ end
             @test batched isa Vector{Float64}
         end
     end
+end
+
+@testitem "Modified callable effect constructs, evaluation deferred (#77b)" begin
+    using Distributions
+
+    base = LogNormal(1.5, 0.5)
+
+    # A callable effect on a continuous base is a time-varying hazard whose
+    # cumulative-hazard integral has no closed form, so its evaluation is the
+    # deferred numeric path (#77b). Construction succeeds; get_effect returns
+    # the callable; params drops it (a callable carries no numeric parameters).
+    for link in (log, identity)
+        d = modify(base, t -> 0.1 * t; link = link)
+        @test d isa ModifiedDistributions.Modified
+        @test ModifiedDistributions.get_effect(d)(2.0) ≈ 0.2
+        @test params(d) == params(base)
+        # Below the support survival is one; in-support evaluation throws the
+        # guiding deferred-path ArgumentError until the numeric path lands.
+        @test logccdf(d, 0.0) == 0.0
+        @test_throws ArgumentError logpdf(d, 2.0)
+        @test_throws ArgumentError logccdf(d, 2.0)
+        @test_throws ArgumentError cdf(d, 2.0)
+    end
+end
+
+@testitem "Modified negative additive effect stays a valid clamped law" begin
+    using Distributions
+
+    # An additive-hazard model is only valid where h(t) + β >= 0. For a negative
+    # β the raw hazard can go below zero near the origin, so the modified hazard
+    # is clamped to max(h + β, 0). logpdf, logccdf and cdf must use that clamped
+    # hazard and stay mutually consistent and monotone.
+    bases = (LogNormal(1.5, 0.5), Weibull(2.0, 3.0))
+    betas = (-0.1, -0.4, 0.2)
+    grid = collect(0.0:0.25:12.0)
+
+    for b in bases, beta in betas
+
+        d = modify(b, beta; link = identity)
+        cdfs = cdf.(Ref(d), grid)
+        @test all(c -> -1e-10 <= c <= 1 + 1e-10, cdfs)
+        @test all(diff(cdfs) .>= -1e-10)
+        for x in grid
+            @test cdf(d, x) + ccdf(d, x) ≈ 1
+            @test pdf(d, x) >= -1e-12
+        end
+    end
+
+    # The closed-form clamped cumulative hazard matches a fine brute-force
+    # trapezoidal integral of max(h(u) + β, 0), so the survival is exact.
+    function brute_cumhazard(base, beta, x; n = 400_000)
+        m = minimum(base)
+        x <= m && return 0.0
+        us = range(m, x; length = n)
+        du = step(us)
+        acc = 0.0
+        for u in us
+            logS = logccdf(base, u)
+            h = isfinite(logS) ? exp(logpdf(base, u) - logS) : Inf
+            acc += max(h + beta, 0.0) * du
+        end
+        return acc
+    end
+    for (b, beta) in ((LogNormal(1.5, 0.5), -0.2), (Weibull(2.0, 3.0), -0.3))
+        d = modify(b, beta; link = identity)
+        for x in (1.0, 2.0, 4.0, 6.0)
+            @test -logccdf(d, x) ≈ brute_cumhazard(b, beta, x) atol=3e-3
+        end
+    end
+end
+
+@testitem "Modified negative additive defective law quantile throws" begin
+    using Distributions
+
+    # A LogNormal hazard peaks then decays, so a strong negative additive effect
+    # clamps most of the hazard away and leaves the law sub-stochastic: its cdf
+    # converges below one, so a high-probability quantile is undefined and must
+    # throw rather than return a garbage bracket.
+    d = modify(LogNormal(1.5, 0.5), -0.4; link = identity)
+    total = cdf(d, 500.0)
+    @test 0.0 < total < 1.0
+    @test_throws ArgumentError quantile(d, 0.99)
+    @test_throws ArgumentError quantile(d, min(total + 0.2, 0.999))
+
+    # Below the total mass the quantile is well defined and round-trips against
+    # the same clamped cdf.
+    plo = total / 2
+    @test cdf(d, quantile(d, plo)) ≈ plo atol=1e-6
+
+    # A proper (non-defective) negative-additive law round-trips at all p.
+    dp = modify(Weibull(2.0, 3.0), -0.1; link = identity)
+    for p in (0.1, 0.25, 0.5, 0.75, 0.9)
+        @test cdf(dp, quantile(dp, p)) ≈ p atol=1e-6
+    end
+end
+
+@testitem "Modified discrete per-bin reporting-hazard reconstruction" begin
+    using Distributions
+
+    # A discretised, truncated LogNormal delay as a plain discrete distribution
+    # over the integer grid 0:(n-1).
+    n = 11
+    trunc = truncated(LogNormal(1.5, 0.5); upper = Float64(n) - 0.5)
+    raw = [pdf(trunc, Float64(g)) for g in 0:(n - 1)]
+    probs = raw ./ sum(raw)
+    ic = DiscreteNonParametric(collect(0:(n - 1)), probs)
+    base_pmf = [pdf(ic, Float64(g)) for g in 0:(n - 1)]
+    effects = collect(range(-0.5, 0.5; length = n))
+
+    # The logit-link discrete path equals `apply_hazard_effects` lifted onto the
+    # distribution.
+    m = modify(ic, effects; link = :logit)
+    mpmf = [pdf(m, Float64(b)) for b in 0:(n - 1)]
+    ref = ModifiedDistributions.apply_hazard_effects(base_pmf, effects)
+    @test mpmf ≈ ref
+    @test sum(mpmf) ≈ 1.0
+
+    # The reconstruction sums to one for ANY link (the final-bin hazard is
+    # pinned to one, so the reconstructed masses telescope to one), and the cdf
+    # accumulates the pmf and is complementary. This holds even for links whose
+    # inverse is not bounded to [0, 1].
+    for link in (:logit, log, identity,
+        ModifiedDistributions.hazard_link(h -> h, e -> e))
+        mm = modify(ic, effects; link = link)
+        @test sum(pdf(mm, Float64(b)) for b in 0:(n - 1)) ≈ 1.0
+        @test cdf(mm, 4.0) + ccdf(mm, 4.0) ≈ 1.0
+        @test cdf(mm, 4.0) ≈ sum(pdf(mm, Float64(b)) for b in 0:4)
+        # Outside the grid: pdf zero, cdf saturates.
+        @test pdf(mm, -1.0) == 0.0
+        @test cdf(mm, -1.0) == 0.0
+        @test cdf(mm, Float64(n)) ≈ 1.0
+    end
+
+    # The logit link keeps each bin's hazard in (0, 1), so its reconstruction is
+    # a genuine probability vector (all masses non-negative); logpdf/logccdf are
+    # then the logs of the (positive) pmf and survival. A general link (identity
+    # or a linear custom link) can push a bin's hazard outside [0, 1] and yield a
+    # formally-normalised but improper reconstruction, so this proper-mass check
+    # is logit-specific.
+    ml = modify(ic, effects; link = :logit)
+    for b in 0:(n - 1)
+        @test pdf(ml, Float64(b)) >= 0
+    end
+    @test logpdf(ml, 2.0) ≈ log(pdf(ml, 2.0))
+    @test logccdf(ml, 3.0) ≈ log(ccdf(ml, 3.0))
+
+    # Zero effect reconstructs the baseline hazard with the final-bin
+    # maximum-delay constraint; the first n-1 bins match the raw masses.
+    m0 = modify(ic, zeros(n); link = :logit)
+    m0pmf = [pdf(m0, Float64(b)) for b in 0:(n - 1)]
+    @test m0pmf[1:(n - 1)] ≈ base_pmf[1:(n - 1)]
+    @test sum(m0pmf) ≈ 1.0
+
+    # rand returns grid points and roughly tracks the PMF.
+    using Random
+    rng = MersenneTwister(1)
+    samples = [rand(rng, m) for _ in 1:20000]
+    @test all(s -> s in 0.0:1.0:Float64(n - 1), samples)
+    @test count(==(0.0), samples) / 20000 ≈ mpmf[1] atol=1e-2
+end
+
+@testitem "Modified reporting-hazard vector helpers round-trip" begin
+    using Distributions
+
+    # delay_hazard and hazard_to_pmf are inverse maps; the final-bin hazard is
+    # pinned to one so the reconstructed PMF sums to one.
+    pmf = [0.2, 0.3, 0.3, 0.2]
+    h = ModifiedDistributions.delay_hazard(pmf)
+    @test h[end] == 1.0
+    @test ModifiedDistributions.hazard_to_pmf(h) ≈ pmf
+    @test sum(ModifiedDistributions.hazard_to_pmf(h)) ≈ 1.0
+
+    # A zero effect leaves the PMF unchanged (up to the max-delay constraint).
+    @test ModifiedDistributions.apply_hazard_effects(pmf, zeros(4)) ≈ pmf
+
+    # Mismatched lengths throw.
+    @test_throws DimensionMismatch ModifiedDistributions.apply_hazard_effects(
+        pmf, [0.1, 0.2])
+end
+
+@testitem "Modified effect surface: scalar vs callable vs vector" begin
+    using Distributions
+
+    base = LogNormal(1.5, 0.5)
+    disc = DiscreteNonParametric(collect(0:4), fill(0.2, 5))
+
+    # A constant callable would (once the numeric path lands) match the scalar
+    # effect; here we assert the type surface: each effect kind constructs on the
+    # right base under both closed-form links, and value support propagates.
+    @test modify(base, 0.5; link = log) isa UnivariateDistribution{Continuous}
+    @test modify(base, 0.5; link = identity) isa
+          UnivariateDistribution{Continuous}
+    @test modify(base, t -> 0.5; link = log) isa
+          UnivariateDistribution{Continuous}
+    @test modify(disc, fill(0.2, 5); link = log) isa
+          UnivariateDistribution{Discrete}
+    @test modify(disc, fill(0.2, 5); link = identity) isa
+          UnivariateDistribution{Discrete}
+
+    # The scalar closed-form paths are unchanged by the widening.
+    dlog = modify(base, 0.5; link = log)
+    @test logccdf(dlog, 2.0) ≈ exp(0.5) * logccdf(base, 2.0)
+    did = modify(base, 0.3; link = identity)
+    @test logccdf(did, 2.0) ≈ logccdf(base, 2.0) - 0.3 * 2.0
+end
+
+@testitem "Modified ForwardDiff gradients (callable/vector and negative additive)" begin
+    using Distributions
+    using ForwardDiff
+
+    # Negative additive effect: the clamped closed form differentiates through
+    # the effect β. The moving clamp knots carry no gradient (at a knot the
+    # integrand is zero), so the gradient matches a central finite difference.
+    fdcheck(f, x; h = 1e-6) = (f(x + h) - f(x - h)) / (2h)
+    for b in (LogNormal(1.5, 0.5), Weibull(2.0, 3.0)), beta in (-0.1, -0.3, 0.2)
+
+        g_lp = ForwardDiff.derivative(
+            bb -> logpdf(modify(b, bb; link = identity), 3.0), beta)
+        g_cdf = ForwardDiff.derivative(
+            bb -> cdf(modify(b, bb; link = identity), 3.0), beta)
+        @test isfinite(g_lp)
+        @test isfinite(g_cdf)
+    end
+    g_ad = ForwardDiff.derivative(
+        bb -> cdf(modify(Weibull(2.0, 3.0), bb; link = identity), 3.0), -0.1)
+    g_fd = fdcheck(
+        bb -> cdf(modify(Weibull(2.0, 3.0), bb; link = identity), 3.0), -0.1)
+    @test g_ad≈g_fd atol=1e-3 rtol=1e-2
+
+    # Per-bin vector effect on a discrete base: the whole PMF-hazard-PMF map is
+    # AD-safe arithmetic, so the gradient wrt the effect vector is finite and
+    # matches finite differences. (The final-bin effect carries a zero gradient
+    # since its hazard is pinned to one.)
+    ic = DiscreteNonParametric(collect(0:4), fill(0.2, 5))
+    obs = [0.0, 1.0, 2.0, 3.0, 4.0]
+    f(θ) = sum(x -> logpdf(modify(ic, θ; link = :logit), x), obs)
+    θ0 = [0.1, 0.2, -0.1, 0.3, 0.0]
+    g = ForwardDiff.gradient(f, θ0)
+    @test all(isfinite, g)
+    g_fdv = [fdcheck(t -> (θ = copy(θ0); θ[i] = t; f(θ)), θ0[i]) for i in 1:5]
+    @test g ≈ g_fdv atol=1e-4
 end
