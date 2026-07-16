@@ -156,8 +156,11 @@ end
 
 # Identity link (additive hazards): the extra hazard accrues from the
 # support minimum `m`, so logS* = logS - effect * (x - m) above `m` and
-# survival stays at one at or below it.
+# survival stays at one at or below it. A negative effect uses the clamped
+# survival, which has no base-AD-safe closed form, so it falls back to the
+# package's own (correct) `logccdf`.
 function logccdf_ad_safe(d::_IdentityModified, x::Real)
+    get_effect(d) < zero(get_effect(d)) && return Distributions.logccdf(d, x)
     inner = get_dist(d)
     m = minimum(inner)
     x <= m && return zero(float(typeof(x)))
