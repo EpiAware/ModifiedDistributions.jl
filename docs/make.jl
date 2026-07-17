@@ -58,7 +58,7 @@ build_docs(
     ModifiedDistributions;
     repo = "EpiAware/ModifiedDistributions.jl",
     authors = "Sam Abbott, EpiAware contributors",
-    deploy_url = "modifieddistributions.epiaware.org",
+    deploy_url = "https://modifieddistributions.epiaware.org",
     pages = _cfg(:pages, ["Home" => "index.md"]),
     skip_notebooks = "--skip-notebooks" in ARGS ||
                      get(ENV, "SKIP_NOTEBOOKS", "false") == "true",
