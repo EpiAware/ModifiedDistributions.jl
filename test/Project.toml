@@ -28,7 +28,12 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 # This package's own ModifiedDistributionsComposedDistributionsExt supplies the
 # leaf protocol for the modifier leaves (#170 step 2); CD's reverse extension is
 # gone. Pinned by git until ComposedDistributions registers.
-ComposedDistributions = {rev = "main", url = "https://github.com/EpiAware/ComposedDistributions.jl"}
+#
+# TEMPORARY: pinned to the feat/leaf-wrapper-registry-189 branch (CD PR #216,
+# ComposedDistributions#189) rather than `main`, since this PR's __init__
+# registration needs CD's not-yet-merged `register_leaf_wrapper!`. Flip back
+# to `rev = "main"` once that PR merges -- tracked so this isn't forgotten.
+ComposedDistributions = {rev = "feat/leaf-wrapper-registry-189", url = "https://github.com/EpiAware/ComposedDistributions.jl"}
 ConvolvedDistributions = {rev = "main", url = "https://github.com/EpiAware/ConvolvedDistributions.jl"}
 EpiAwareADTools = {rev = "main", url = "https://github.com/EpiAware/EpiAwareADTools.jl"}
 EpiAwarePackageTools = {rev = "main", url = "https://github.com/EpiAware/EpiAwarePackageTools.jl"}
