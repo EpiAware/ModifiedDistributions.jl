@@ -24,7 +24,7 @@ Wrappers for [Distributions.jl](https://github.com/JuliaStats/Distributions.jl) 
 
 ## Getting started
 
-See [documentation](https://modifieddistributions.epiaware.org/stable/) for a full walkthrough.
+See [documentation](https://modifieddistributions.epiaware.org/dev/) for a full walkthrough.
 
 An affine transform gives the exact distribution of `Y = 2X + 1`, and the whole distribution interface follows:
 
