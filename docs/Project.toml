@@ -40,10 +40,11 @@ EpiAwarePackageTools = {url = "https://github.com/EpiAware/EpiAwarePackageTools.
 ComposedDistributions = {url = "https://github.com/EpiAware/ComposedDistributions.jl", rev = "main"}
 ConvolvedDistributions = {url = "https://github.com/EpiAware/ConvolvedDistributions.jl", rev = "main"}
 EpiAwareADTools = {url = "https://github.com/EpiAware/EpiAwareADTools.jl", rev = "main"}
-# LoweredDistributions (the ModifiedDistributionsLoweredDistributionsExt
-# trigger, used by the lowering tutorial) is unregistered, so it is pinned by
-# git; it must be a direct dep here because `[sources]` entries only apply to
-# the active project's direct dependencies.
+# LoweredDistributions (used by the lowering tutorial; it now hosts the
+# modifier-leaf bridge itself in LoweredDistributionsModifiedDistributionsExt,
+# LD#51) is unregistered, so it is pinned by git; it must be a direct dep here
+# because `[sources]` entries only apply to the active project's direct
+# dependencies.
 LoweredDistributions = {url = "https://github.com/EpiAware/LoweredDistributions.jl", rev = "main"}
 
 [compat]
