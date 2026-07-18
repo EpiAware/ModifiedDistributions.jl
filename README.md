@@ -34,7 +34,7 @@ Wrappers for [Distributions.jl](https://github.com/JuliaStats/Distributions.jl) 
 
 ## Getting started
 
-See [documentation](https://modifieddistributions.epiaware.org/stable/) for a full walkthrough.
+See [documentation](https://modifieddistributions.epiaware.org/dev/) for a full walkthrough.
 
 Modifiers nest, so a real pipeline stacks several changes on one delay: an
 intervention that halves the hazard of admission, a half-day reporting lag,
@@ -71,7 +71,7 @@ Unwrapping recovers the baseline delay underneath every layer.
 get_dist_recursive(pipeline) == admission
 ```
 
-The [getting started guide](https://modifieddistributions.epiaware.org/stable/getting-started/)
+The [getting started guide](https://modifieddistributions.epiaware.org/dev/getting-started/)
 carries this same pipeline further: what `thin` does once it meets a real
 count series, and how modifiers apply across a composed chain.
 
@@ -91,8 +91,8 @@ Likewise `weight` replaces ad hoc `n * logpdf(d, x)` terms in model code with a 
 
 ## Where to learn more
 
-- Want to get started running code? See the [getting started guide](https://modifieddistributions.epiaware.org/stable/getting-started/).
-- Want to understand the API? See the [API reference](https://modifieddistributions.epiaware.org/stable/lib/public).
+- Want to get started running code? See the [getting started guide](https://modifieddistributions.epiaware.org/dev/getting-started/).
+- Want to understand the API? See the [API reference](https://modifieddistributions.epiaware.org/dev/lib/public).
 - Want to see the code? Check out our [GitHub repository](https://github.com/EpiAware/ModifiedDistributions.jl).
 
 ## Getting help
