@@ -1,5 +1,17 @@
 ## Unreleased
 
+- **Breaking:** the `ModifiedDistributionsLoweredDistributionsExt` extension and
+  the `LoweredDistributions` weakdep are removed (LD#51, the #23 hub-owned
+  decision). `LoweredDistributions` now hosts the `lower` bridge for the
+  modifier leaves itself, in its own
+  `LoweredDistributionsModifiedDistributionsExt` (moved verbatim from this
+  package). Anyone who imported the extension module directly from this
+  package must load `LoweredDistributions` and rely on its extension
+  instead; functionality — including the partial-bridge refusal contract
+  described below — is otherwise unchanged when both packages are loaded
+  together. The docs lowering tutorial still exercises the same bridge, now
+  loaded from `LoweredDistributions`.
+
 - `ModifiedDistributionsComposedDistributionsExt` now hosts the FULL ComposedDistributions leaf protocol for the modifier leaves (`Affine`/`Weighted`/`Transformed`/`Modified`): the `free_leaf`/`rewrap_leaf`/`shared_tag`/`uncertain_specs` peel-throughs, the `extra_leaf_params`/`set_extra_leaf_params` thin protocol, `Affine` moments and the `Modified` moment errors, `instantiate`/`has_varying`, and the `get_dist(::Shared)` seam — absorbed from ComposedDistributions' now-removed reverse extension, read through the public leaf-protocol API their #174 published. This ends the extension cycle between the two packages (each pair now has exactly one extension), unblocking both registrations (#83).
 
 - Added the numeric cumulative-hazard path for `Modified` on a continuous base: a callable time-varying `effect(t)` (any link), or a scalar effect under a general hazard link, integrates the modified hazard by adaptive quadrature (`ModifiedDistributionsQuadGKExt`, loaded via `using QuadGK`), with clamp-knot subdivision so a mostly-clamped interval's active band is not missed. The `Modified` constructs freely; evaluating it without a quadrature backend loaded throws a clear `ArgumentError`. On this continuous path, the built-in `LogitLink` now uses its unclamped logit/logistic pair, so a base hazard above one (a rate, not a probability) throws a `DomainError` rather than silently pinning to the saturated logit value the discrete per-bin path clamps to (#77b).
