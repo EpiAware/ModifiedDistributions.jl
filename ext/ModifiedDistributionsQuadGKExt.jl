@@ -26,11 +26,11 @@
 module ModifiedDistributionsQuadGKExt
 
 using QuadGK: quadgk
-using Distributions: minimum, quantile
+using Distributions: minimum
 import ModifiedDistributions: _numeric_logccdf, _numeric_logpdf
 using ModifiedDistributions: Modified, _NumericModified, get_dist, get_effect,
                              get_link, LogitLink, _logit_strict, _base_hazard,
-                             _scan_crossings
+                             _scan_crossings, _scan_upper
 
 # The hazard modification at `u`: a scalar effect broadcast over time, or a
 # callable evaluated at `u`.
@@ -73,16 +73,6 @@ end
 function _clamp_knots(d::Modified, lo::Real, hi::Real)
     (isfinite(lo) && isfinite(hi)) || return typeof(float(lo))[]
     return _scan_crossings(u -> _raw_mod_hazard(d, u), lo, hi)
-end
-
-# An upper limit for the clamp-knot scan tied to the base's own scale (a deep
-# upper quantile), so a far-out query `x` cannot coarsen the scan grid past the
-# active band. Beyond the base's bulk the hazard is either exhausted or (for an
-# additive clamp) clamped to zero, so there are no knots to find there. Falls
-# back to the query point if the base has no finite deep quantile.
-function _scan_upper(dist)
-    q = float(quantile(dist, 1 - 1e-8))
-    return isfinite(q) ? q : oftype(q, Inf)
 end
 
 # The modified cumulative hazard H*(x) = ∫ₘˣ h*(u) du by adaptive quadrature,
