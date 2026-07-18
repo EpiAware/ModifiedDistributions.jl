@@ -29,11 +29,9 @@ Instead, we give practical setup advice to get you working with ModifiedDistribu
 
 **Why juliaup?** Easy version management, automatic updates, and simple switching between Julia versions for different projects.
 
-👉 **Learn more**: [juliaup GitHub repository](https://github.com/JuliaLang/juliaup) for detailed usage instructions.
+- Learn more: [juliaup GitHub repository](https://github.com/JuliaLang/juliaup) for detailed usage instructions.
 
 ## Editor setup: VSCode with Julia extension
-
-**Recommended setup:**
 
 1. Install [Visual Studio Code](https://code.visualstudio.com/)
 2. Install the Julia extension from the VS Code Extensions marketplace (search for "Julia")
@@ -45,7 +43,7 @@ Instead, we give practical setup advice to get you working with ModifiedDistribu
 - **Plot viewer**: Dedicated pane for visualisations
 - **Symbol navigation**: Go to definitions, find references
 
-👉 **Learn more**: [Julia VSCode documentation](https://www.julia-vscode.org/docs/stable/)
+- Learn more: [Julia VSCode documentation](https://www.julia-vscode.org/docs/stable/)
 
 ## Julia environments
 
@@ -57,7 +55,7 @@ Each project can have isolated packages and versions.
 - `Manifest.toml`: Records exact versions (like a lockfile)
 - Environments can be [stacked](https://docs.julialang.org/en/v1/manual/code-loading/#Environment-stacks) so that global packages are available to projects
 
-👉 **Learn more**: [Julia Pkg documentation](https://pkgdocs.julialang.org/v1/environments/)
+- Learn more: [Julia Pkg documentation](https://pkgdocs.julialang.org/v1/environments/)
 
 ### Using environments from the REPL
 
@@ -123,15 +121,12 @@ end
 
 ### Installing and using the package
 
-```julia-repl
-julia> ]
-(@v1.11) pkg> add ModifiedDistributions
-julia> using ModifiedDistributions
+See the [Installation](@ref installation) page to add the package, then load
+it alongside Distributions.jl and try a modifier:
 
-# Start using the package
-julia> using Distributions
+```julia-repl
+julia> using ModifiedDistributions, Distributions
 julia> affine(LogNormal(1.5, 0.5); scale = 2.0, shift = 1.0)
-julia> weight(Normal(2.0, 1.0), 10.0)
 ```
 
 ### Working with the tutorials
