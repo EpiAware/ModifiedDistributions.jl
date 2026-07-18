@@ -6,7 +6,7 @@
 # builds chains of distributions: a `Sequential` links a series of steps, and
 # the whole chain observes one scalar quantity, the convolved total of its
 # steps (see ComposedDistributions.jl's [linear chain
-# tutorial](https://composeddistributions.epiaware.org/stable/getting-started/tutorials/linear-chain)
+# tutorial](https://composeddistributions.epiaware.org/dev/getting-started/tutorials/linear-chain)
 # for why).
 # When ComposedDistributions is loaded alongside ModifiedDistributions a package
 # extension lets the modifier verbs apply to a chain directly.
