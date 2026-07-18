@@ -306,6 +306,23 @@ end
     end
 end
 
+@testitem "Modified identity closed form cdf stays monotone far past the active clamp band (#82)" begin
+    using Distributions
+
+    # The clamp-knot scan used to run over [m, x], so a far-out x coarsened its
+    # step past the (bounded) band where the hazard clears the clamp level,
+    # the scan found no crossings, the cumulative hazard came back as zero and
+    # cdf collapsed. The scan is now capped at a deep base quantile
+    # independent of x, so the active band is always resolved.
+    d = modify(LogNormal(1.5, 0.5), -0.4; link = identity)
+    c500 = cdf(d, 500.0)
+    @test c500 ≈ 0.042346 atol=1e-5
+    @test cdf(d, 1.0e4) ≈ c500 atol=1e-8
+    @test cdf(d, 1.0e6) ≈ c500 atol=1e-8
+    @test cdf(d, 1.0e4) >= c500 - 1e-10
+    @test cdf(d, 1.0e6) >= c500 - 1e-10
+end
+
 @testitem "Modified negative additive defective law quantile throws" begin
     using Distributions
 
