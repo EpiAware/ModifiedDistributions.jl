@@ -14,48 +14,66 @@ Wrappers for [Distributions.jl](https://github.com/JuliaStats/Distributions.jl) 
 
 ## Why ModifiedDistributions?
 
-- **Rescale and shift** — exact `affine` transforms of any univariate distribution, with the full distribution interface intact.
-- **Weight likelihoods** — scale an observation's contribution with `weight` while the result stays a real, samplable distribution, so a Turing.jl model (or any PPL built on Distributions.jl) remains a complete generative model.
-- **Modify hazards** — proportional or additive hazard changes with `modify`, in closed form.
-- **Forward transforms** — carry thinning or accumulation for a downstream count series without touching the distribution itself.
-- **Unwrap anywhere** — recover the distribution underneath any wrapper with `get_dist`.
-- **Works with composed chains** — modifiers apply across ComposedDistributions.jl chains.
-- **AD-ready** — tested in CI against ForwardDiff, ReverseDiff, Enzyme, and Mooncake.
+- A model routinely needs "the same delay, but weighted, rescaled, or
+  hazard-shifted"; ModifiedDistributions wraps each change as one small,
+  composable piece instead of hand-deriving the change-of-variables maths
+  each time.
+- Every wrapper stays a complete distribution — sampling, quantiles,
+  moments — so a modified delay drops into a PPL model exactly like the
+  distribution it wraps.
+- Wrappers nest and unwrap cleanly, so a pipeline built from several small
+  changes stays inspectable and reversible rather than collapsing into one
+  opaque function.
+- Weighting a likelihood is a one-line wrapper instead of an ad hoc
+  `n * logpdf(...)` term scattered through model code.
+- Hazard-scale changes, such as an intervention that shifts risk, have no
+  Distributions.jl counterpart and are given here in closed form.
+- The same wrappers apply across ComposedDistributions.jl chains and
+  ConvolvedDistributions.jl count series, so a delay modified once carries
+  that change through the rest of the pipeline.
 
 ## Getting started
 
 See [documentation](https://modifieddistributions.epiaware.org/stable/) for a full walkthrough.
 
-An affine transform gives the exact distribution of `Y = 2X + 1`, and the whole distribution interface follows:
+Modifiers nest, so a real pipeline stacks several changes on one delay: an
+intervention that halves the hazard of admission, a half-day reporting lag,
+and a 60% ascertainment fraction tagged for a downstream count series.
 
 ```julia
 using ModifiedDistributions, Distributions
 
-d = affine(LogNormal(1.5, 0.5); scale = 2.0, shift = 1.0)
-(mean = mean(d), logpdf = logpdf(d, 5.0), median = quantile(d, 0.5))
+admission = Gamma(2.0, 1.0)   # baseline infection-to-admission delay
+
+pipeline = thin(affine(modify(admission, -log(2.0)); shift = 0.5), 0.6)
 ```
 
-Weighting scales the log-likelihood contribution of an observation seen 10 times.
-The two numbers printed below match, showing the weighted log-density is exactly 10 times the base:
+`pipeline` prints as the nested wrapper it is.
 
 ```julia
-wd = weight(d, 10.0)
-(weighted = logpdf(wd, 5.0), manual = 10.0 * logpdf(d, 5.0))
+pipeline
 ```
 
-Hazard modification works in closed form.
-Halving the hazard raises the survival function to the power one half, and the two printed values agree:
+Each stage compounds the three-day survival: halving the hazard raises it to
+its square root, and the reporting lag raises it further (day 3 is now
+effectively day 2.5 post-admission); `thin` does not touch the scalar
+distribution at all, only tagging it for later use.
 
 ```julia
-md = modify(LogNormal(1.5, 0.5), -log(2.0))
-(modified = ccdf(md, 2.0), base_sqrt = ccdf(LogNormal(1.5, 0.5), 2.0)^0.5)
+(baseline_survival = ccdf(admission, 3.0),
+    after_intervention = ccdf(modify(admission, -log(2.0)), 3.0),
+    after_reporting_lag = ccdf(pipeline, 3.0))
 ```
 
-Unwrapping the weighted distribution returns the affine transform underneath:
+Unwrapping recovers the baseline delay underneath every layer.
 
 ```julia
-get_dist(wd)
+get_dist_recursive(pipeline) == admission
 ```
+
+The [getting started guide](https://modifieddistributions.epiaware.org/stable/getting-started/)
+carries this same pipeline further: what `thin` does once it meets a real
+count series, and how modifiers apply across a composed chain.
 
 ## Relationship to Distributions.jl
 
@@ -73,8 +91,17 @@ Likewise `weight` replaces ad hoc `n * logpdf(d, x)` terms in model code with a 
 
 ## Where to learn more
 
-- [GitHub Discussions](https://github.com/EpiAware/ModifiedDistributions.jl/discussions)
-- [GitHub Repository](https://github.com/EpiAware/ModifiedDistributions.jl)
+- Want to get started running code? See the [getting started guide](https://modifieddistributions.epiaware.org/stable/getting-started/).
+- Want to understand the API? See the [API reference](https://modifieddistributions.epiaware.org/stable/lib/public).
+- Want to see the code? Check out our [GitHub repository](https://github.com/EpiAware/ModifiedDistributions.jl).
+
+## Getting help
+
+For usage questions, ask on the [Julia Discourse](https://discourse.julialang.org)
+(the SciML or usage categories) or the [epinowcast community forum](https://community.epinowcast.org),
+our home for epidemiological modelling questions.
+Please use [GitHub issues](https://github.com/EpiAware/ModifiedDistributions.jl/issues)
+for bug reports and feature requests only.
 
 ## Contributing
 
