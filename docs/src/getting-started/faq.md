@@ -23,13 +23,13 @@ using ModifiedDistributions, Distributions
 
 Constructor and observation weights combine by multiplication when both are present.
 
-In every form the result is still a real Distributions.jl distribution, unlike an ad hoc `n * logpdf(d, x)` term or Turing.jl's `@addlogprob!`.
-Sampling delegates to the base while only the likelihood contribution is scaled, so a Turing.jl model (or any PPL built on Distributions.jl) that uses a weighted distribution stays a complete generative model — prior simulation and posterior-predictive draws keep working.
+In every form the result stays a real, samplable Distributions.jl distribution.
+See the [Weighted likelihoods](@ref weighted-likelihoods) tutorial's *Weighted distributions stay samplable* section for why that matters in a PPL.
 
 ## Why does a zero or missing weight give `-Inf` rather than `NaN`?
 
-`0 * logpdf` is `NaN` when `logpdf` is `-Inf`, which poisons a sampler.
-`weight` short-circuits zero and missing weights to `-Inf` directly, keeping the log-density well defined (and keeping automatic differentiation happy).
+`0 * logpdf` would be `NaN` at an out-of-support value (`logpdf = -Inf`), which poisons a sampler; `weight` short-circuits a zero or missing weight straight to `-Inf` instead.
+See the [Weighted likelihoods](@ref weighted-likelihoods) tutorial's *Why zero and missing weights give `-Inf`* section for the full reasoning, including why it keeps automatic differentiation well defined.
 
 ## Why doesn't `thin` change `logpdf`?
 
@@ -39,16 +39,8 @@ If you want thinning that changes the density, that is a different operation and
 
 ## What is the difference between `get_dist` and `get_dist_recursive`?
 
-`get_dist` removes one layer of wrapping; `get_dist_recursive` keeps unwrapping until it reaches a distribution with no more layers:
-
-```@example faq
-nested = weight(affine(Normal(0, 1); scale = 2.0), 3.0)
-get_dist(nested)           # the Affine wrapper
-```
-
-```@example faq
-get_dist_recursive(nested) # the Normal
-```
+`get_dist` removes one layer of wrapping; `get_dist_recursive` keeps unwrapping until it reaches a distribution with no more layers.
+See the [Unwrapping](@ref getting-started) section of the Getting started overview for a worked example.
 
 ## Can I combine modifiers in any order?
 
@@ -58,25 +50,22 @@ Order matters for meaning, not validity: modify the distribution first, then wei
 
 ## Which hazard modifications does `modify` support?
 
-The `effect` is a scalar, a callable `effect(t)`, or a per-bin vector, and the path is chosen by the base and the link.
+The `effect` is a scalar, a callable `effect(t)`, or a per-bin vector, and the path is chosen by the base and the link (see the [Getting started](@ref getting-started) overview and the [modifier pipeline](@ref modifier-pipeline) tutorial for the closed-form maths).
 
-A scalar effect on a continuous base uses a closed form: the `log` link scales the survival (proportional hazards), and the `identity` link adds a constant hazard.
-The `identity` link now also accepts a *negative* effect: the hazard is clamped to `max(h(t) + β, 0)` and the survival is reconstructed exactly from the base cumulative hazard between the clamp knots, with no quadrature.
-A base with a non-monotone hazard can be left sub-stochastic (defective) by a strong negative effect, and `quantile`/`rand` above the total mass then throw.
+| Base | Effect | Link | Behaviour |
+|---|---|---|---|
+| Continuous | Scalar | `log` | Closed form: proportional hazards, survival raised to `exp(effect)`. |
+| Continuous | Scalar, negative | `identity` | Closed form: hazard clamped to `max(h(t) + β, 0)`, survival reconstructed exactly from the base cumulative hazard between clamp knots (no quadrature). A non-monotone base hazard can go sub-stochastic (defective) under a strong negative effect, and `quantile`/`rand` above the total mass then throw. |
+| Discrete | Per-bin vector | any (including `:logit` or a user callable) | Closed form: reshapes each delay bin's reporting hazard on the link scale, reconstructing the PMF exactly — the epinowcast discrete-time reporting hazard. |
+| Continuous | Callable `effect(t)` | any | Deferred: a time-varying hazard has no closed-form cumulative hazard, so it needs numeric integration. Tracked in [issue #77](https://github.com/EpiAware/ModifiedDistributions.jl/issues/77) part (b); such a `Modified` constructs, but evaluating it throws until the path lands. |
 
-A discrete base takes a per-bin vector effect and reshapes each delay bin's reporting hazard on the link scale, reconstructing the PMF exactly, for any link (including `:logit` or a user callable) — the epinowcast discrete-time reporting hazard.
-
-A callable `effect(t)` on a continuous base is a time-varying hazard with no closed-form cumulative hazard, so it needs numeric integration.
-That numeric path (and a general `:logit`/custom link on a continuous base) is deferred, tracked in [issue #77](https://github.com/EpiAware/ModifiedDistributions.jl/issues/77) part (b): such a `Modified` constructs, but evaluating it throws until the path lands.
 The epinowcast reference-by-report expected-count matrix layer stays upstream in [CensoredDistributions.jl](https://github.com/EpiAware/CensoredDistributions.jl).
 
 ## Does this work with composed distribution chains?
 
 Yes.
-Loading [ComposedDistributions.jl](https://github.com/EpiAware/ComposedDistributions.jl) activates a package extension that lets the modifier verbs apply to a `Sequential` chain.
-A chain observes one scalar quantity — its convolved total — so a modifier on the chain modifies that observed scalar: the chain collapses to its convolved total first, then the modifier wraps the resulting univariate distribution.
-A `Parallel` has several independent endpoints and no single observed scalar, so the verbs are not defined for it.
-See the [Modifiers across composed chains](@ref composed-chains) tutorial.
+Loading [ComposedDistributions.jl](https://github.com/EpiAware/ComposedDistributions.jl) activates a package extension that lets the modifier verbs apply to a `Sequential` chain's one observed scalar (a `Parallel` has no single observed scalar, so the verbs are not defined for it).
+See the [Modifiers across composed chains](@ref composed-chains) tutorial for why a chain has exactly one observed scalar and a worked example.
 
 ## How do I cite ModifiedDistributions?
 
