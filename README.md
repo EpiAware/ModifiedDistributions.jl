@@ -81,13 +81,13 @@ Distributions.jl already supports affine arithmetic on some distributions (`2.0 
 `affine` instead wraps any univariate distribution with the exact change-of-variables maths, so it works uniformly and keeps the inner distribution recoverable via `get_dist`.
 Likewise `weight` replaces ad hoc `n * logpdf(d, x)` terms in model code with a distribution object that carries its weight, and `modify` gives hazard-scale transforms that have no Distributions.jl counterpart.
 
-## What packages work well with ModifiedDistributions.jl?
+## Related packages
 
-- [Distributions.jl](https://github.com/JuliaStats/Distributions.jl) supplies the distributions being modified.
-- [Turing.jl](https://github.com/TuringLang/Turing.jl) and other PPLs consume the wrappers directly, e.g. weighted likelihoods for aggregated data.
-- [ComposedDistributions.jl](https://github.com/EpiAware/ComposedDistributions.jl) composes distributions into chains; a package extension lets the modifier verbs apply across a chain's observed total.
-- [ConvolvedDistributions.jl](https://github.com/EpiAware/ConvolvedDistributions.jl) sums independent delays and convolves count series; a package extension applies `thin`/`cumulative` to the convolved counts and lets modified distributions serve as convolution components.
-- [CensoredDistributions.jl](https://github.com/EpiAware/CensoredDistributions.jl) and the wider [EpiAware](https://github.com/EpiAware) ecosystem build censoring, convolution, and composition layers on top of these modifiers.
+- [ComposedDistributions.jl](https://composeddistributions.epiaware.org/stable/) composes distributions into event-tree chains; a package extension here lets the modifier verbs apply across a chain's observed total, and ComposedDistributions.jl's own leaf-protocol support lets a modified leaf compose inside a chain.
+- [ConvolvedDistributions.jl](https://convolveddistributions.epiaware.org/dev/) sums independent delays and convolves count series; a package extension applies `thin`/`cumulative` to the convolved counts and lets modified distributions serve as convolution components.
+- [LoweredDistributions.jl](https://lowereddistributions.epiaware.org/dev/) turns a distribution into a backend-agnostic dynamical-systems representation; a package extension here lowers the modifiers that carry dynamics (an `affine` rescale, a `modify` hazard change on an `Exponential`) and refuses the observation-only ones (a shift, a `weight`, a forward transform) rather than approximating them.
+- [CensoredDistributions.jl](https://censoreddistributions.epiaware.org/stable/) builds primary-event and interval censoring on distributions, including ones already modified by this package.
+- [DistributionsInference.jl](https://github.com/EpiAware/DistributionsInference.jl) is the emerging home for probabilistic-programming integrations (Turing.jl, DynamicPPL, Bijectors) that a modified or weighted distribution plugs into.
 
 ## Where to learn more
 

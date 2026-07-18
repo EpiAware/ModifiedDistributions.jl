@@ -170,6 +170,8 @@ See the [Convolving modified distributions](@ref convolved-modifiers) tutorial f
 - Want the full interface? See the [Public API](@ref public-api).
 - Common questions are answered in the [FAQ](@ref faq).
 - Writing your own wrapper? See [Writing a new modifier](@ref extending).
+- Want the packages ModifiedDistributions works alongside? See
+  [Related packages](../index.md) on the home page.
 
 ## Getting help
 
