@@ -131,9 +131,9 @@ ModifiedDistributions._apply_forward_ops(daily, shift_ops)
 
 # ## Hazard modification through a link
 #
-# [`modify`](@ref) changes a continuous distribution's hazard through a link.
-# The default `log` link gives proportional hazards: with effect `β` and
-# `θ = exp(β)`, the survival function is raised to the power `θ`.
+# [`modify`](@ref) changes a continuous distribution's hazard through a link;
+# the default `log` link gives proportional hazards (see the
+# [Getting started](@ref getting-started) overview for the formula).
 # The two printed values agree.
 
 hazard_base = Weibull(1.5, 2.0)

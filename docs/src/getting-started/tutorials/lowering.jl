@@ -155,8 +155,10 @@ end
 
 # ## Lowering across a composed chain
 #
-# A `ComposedDistributions` `Sequential` chain observes one scalar, the
-# convolved total of its steps, exposed by `observed_distribution`.
+# A `ComposedDistributions` `Sequential` chain collapses to the one scalar it
+# observes, exposed by `observed_distribution` (see the
+# [Modifiers across composed chains](@ref composed-chains) tutorial for why
+# there is exactly one).
 # That total is a distribution like any other, so it lowers: with no exact
 # closed form it takes the adaptive two-moment [`phase_type`](@ref) fit.
 
