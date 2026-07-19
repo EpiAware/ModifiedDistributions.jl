@@ -16,6 +16,45 @@ package alongside Distributions.jl:
 using ModifiedDistributions, Distributions
 ```
 
+## A composed pipeline
+
+Modifiers nest, so a real pipeline stacks several changes on one delay: an
+intervention that halves the hazard of admission, a half-day reporting lag,
+and a 60% ascertainment fraction tagged for a downstream count series.
+
+```@example quickstart
+admission = Gamma(2.0, 1.0)   # baseline infection-to-admission delay
+
+pipeline = thin(affine(modify(admission, -log(2.0)); shift = 0.5), 0.6)
+```
+
+`pipeline` prints as the nested wrapper it is.
+
+```@example quickstart
+pipeline
+```
+
+Each stage compounds the three-day survival: halving the hazard raises it to
+its square root, and the reporting lag raises it further (day 3 is now
+effectively day 2.5 post-admission); `thin` does not touch the scalar
+distribution at all, only tagging it for later use against a count series.
+
+```@example quickstart
+(baseline_survival = ccdf(admission, 3.0),
+    after_intervention = ccdf(modify(admission, -log(2.0)), 3.0),
+    after_reporting_lag = ccdf(pipeline, 3.0))
+```
+
+Unwrapping recovers the baseline delay underneath every layer.
+
+```@example quickstart
+get_dist_recursive(pipeline) == admission
+```
+
+The rest of this page tours each modifier on its own, and the
+[Extensions](@ref) section below shows what `thin` does once it meets a real
+count series.
+
 ## Affine transforms
 
 [`affine`](@ref) gives the exact change-of-variables distribution of `Y = scale * X + shift`:
@@ -124,5 +163,13 @@ See the [Convolving modified distributions](@ref convolved-modifiers) tutorial f
 - Want the full interface? See the [Public API](@ref public-api).
 - Common questions are answered in the [FAQ](@ref faq).
 - Writing your own wrapper? See [Writing a new modifier](@ref extending).
-- Want to report a problem or ask a question? Open an issue or start a
-  discussion on the [GitHub repository](https://github.com/EpiAware/ModifiedDistributions.jl).
+- Want the packages ModifiedDistributions works alongside? See
+  [Related packages](../index.md) on the home page.
+
+## Getting help
+
+For usage questions, ask on the [Julia Discourse](https://discourse.julialang.org)
+(the SciML or usage categories) or the [epinowcast community forum](https://community.epinowcast.org),
+our home for epidemiological modelling questions.
+Please use [GitHub issues](https://github.com/EpiAware/ModifiedDistributions.jl/issues)
+for bug reports and feature requests only.
