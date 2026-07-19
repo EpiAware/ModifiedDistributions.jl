@@ -5,7 +5,9 @@
 # [ComposedDistributions.jl](https://github.com/EpiAware/ComposedDistributions.jl)
 # builds chains of distributions: a `Sequential` links a series of steps, and
 # the whole chain observes one scalar quantity, the convolved total of its
-# steps.
+# steps (see ComposedDistributions.jl's [linear chain
+# tutorial](https://composeddistributions.epiaware.org/dev/getting-started/tutorials/linear-chain)
+# for why).
 # When ComposedDistributions is loaded alongside ModifiedDistributions a package
 # extension lets the modifier verbs apply to a chain directly.
 # A modifier on a chain modifies that observed scalar: the chain collapses

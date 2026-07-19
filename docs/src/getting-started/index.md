@@ -9,14 +9,8 @@ Modifiers nest freely, and the [`get_dist`](@ref) protocol unwraps them again.
 
 ## Installation
 
-```julia
-using Pkg
-Pkg.add("ModifiedDistributions")
-```
-
-See the [Installation](@ref installation) page for more detail.
-
-Load the package alongside Distributions.jl:
+See the [Installation](@ref installation) page for setup, then load the
+package alongside Distributions.jl:
 
 ```@example quickstart
 using ModifiedDistributions, Distributions
@@ -97,8 +91,7 @@ Downstream packages can extend `get_dist` for their own wrappers to join the sam
 
 ## Extensions
 
-Loading [ComposedDistributions.jl](https://github.com/EpiAware/ComposedDistributions.jl) alongside this package activates an extension that lets the modifier verbs apply to a composed `Sequential` chain.
-A chain observes one scalar quantity, its convolved total, so a modifier on the chain modifies that observed scalar:
+Loading [ComposedDistributions.jl](https://github.com/EpiAware/ComposedDistributions.jl) alongside this package activates an extension that lets the modifier verbs apply to a composed `Sequential` chain, modifying the one scalar quantity the chain observes (see the [Modifiers across composed chains](@ref composed-chains) tutorial for why there is exactly one observed scalar):
 
 ```julia
 using ModifiedDistributions, ComposedDistributions, Distributions

@@ -17,36 +17,32 @@ Before contributing, please:
 
 ModifiedDistributions.jl uses several environments for different purposes.
 
-```
-ModifiedDistributions.jl/
-├── Project.toml            # Main package environment
-├── src/                    # Package source
-│   ├── ModifiedDistributions.jl  # Module file: exports and centralised imports
-│   ├── docstrings.jl       # DocStringExtensions @template registration
-│   ├── Affine.jl           # affine modifier
-│   ├── Weighted.jl         # weight modifier
-│   ├── Transformed.jl      # series_transform / thin / cumulative
-│   ├── Modified.jl         # modify (hazard) modifier
-│   ├── get_dist.jl         # unwrap protocol
-│   └── public.jl           # public (non-exported) types
-├── ext/                    # Package extensions (ComposedDistributions)
-├── test/
-│   ├── Project.toml        # Test environment
-│   ├── runtests.jl         # Main test entry (TestItemRunner)
-│   ├── package/            # Quality gates (Aqua, ExplicitImports, JET, ...)
-│   ├── ad/                 # AD gradient harness (own environment)
-│   ├── jet/                # JET static analysis (isolated environment)
-│   ├── formatter/          # JuliaFormatter check (isolated environment)
-│   └── ADFixtures/         # AD gradient scenario registry
-├── docs/
-│   ├── Project.toml        # Documentation environment
-│   ├── make.jl             # Documentation build script
-│   ├── pages.jl            # Documentation navigation tree
-│   └── src/                # Documentation source files
-└── benchmark/
-    ├── Project.toml        # Benchmark environment
-    └── benchmarks.jl       # Benchmark suite definition
-```
+| Path | Purpose |
+|---|---|
+| `Project.toml` | Main package environment |
+| `src/` | Package source |
+| `src/ModifiedDistributions.jl` | Module file: exports and centralised imports |
+| `src/docstrings.jl` | DocStringExtensions `@template` registration |
+| `src/Affine.jl` | `affine` modifier |
+| `src/Weighted.jl` | `weight` modifier |
+| `src/Transformed.jl` | `series_transform` / `thin` / `cumulative` |
+| `src/Modified.jl` | `modify` (hazard) modifier |
+| `src/get_dist.jl` | unwrap protocol |
+| `src/public.jl` | public (non-exported) types |
+| `ext/` | Package extensions (ComposedDistributions) |
+| `test/Project.toml` | Test environment |
+| `test/runtests.jl` | Main test entry (TestItemRunner) |
+| `test/package/` | Quality gates (Aqua, ExplicitImports, JET, ...) |
+| `test/ad/` | AD gradient harness (own environment) |
+| `test/jet/` | JET static analysis (isolated environment) |
+| `test/formatter/` | JuliaFormatter check (isolated environment) |
+| `test/ADFixtures/` | AD gradient scenario registry |
+| `docs/Project.toml` | Documentation environment |
+| `docs/make.jl` | Documentation build script |
+| `docs/pages.jl` | Documentation navigation tree |
+| `docs/src/` | Documentation source files |
+| `benchmark/Project.toml` | Benchmark environment |
+| `benchmark/benchmarks.jl` | Benchmark suite definition |
 
 Files carrying a `MANAGED by EpiAwarePackageTools.scaffold` header are owned by the shared kit and rewritten on every sync.
 See [Infrastructure and template sync](@ref infrastructure) for which files are managed and which are yours to edit.
@@ -248,17 +244,8 @@ Benchmarks run on pull requests via `.github/workflows/benchmark.yaml`, and push
 
 ### Pre-commit checklist
 
-Before submitting a pull request:
-
-1. **Run pre-commit checks** (recommended):
-   ```bash
-   task precommit
-   ```
-2. **Or run individual checks**:
-   ```bash
-   task test        # Full test suite
-   task docs-fast   # Build documentation
-   ```
+Before submitting a pull request, run `task precommit` (see *Quick start with
+tasks* above), or `task test` and `task docs-fast` individually.
 
 ## Adding new features
 
