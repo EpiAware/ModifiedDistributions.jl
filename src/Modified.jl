@@ -545,6 +545,18 @@ function _hazard_crossings(dist, lo::Real, hi::Real, c::Real)
     return _scan_crossings(u -> _base_hazard(dist, u) - c, lo, hi)
 end
 
+# An upper limit for a clamp-knot scan, tied to the base's own scale (a deep
+# upper quantile) rather than to a query point, so a far-out query cannot
+# coarsen the scan grid past the (bounded) active band. Beyond the base's
+# bulk the hazard is either exhausted or (for an additive clamp) clamped to
+# zero, so there are no knots to find there. Shared by the identity closed
+# form (`_identity_cumhazard_clamped`) and the QuadGK extension's numeric
+# path. Falls back to +Inf if the base has no finite deep quantile.
+function _scan_upper(dist)
+    q = float(quantile(dist, 1 - 1e-8))
+    return isfinite(q) ? q : oftype(q, Inf)
+end
+
 # The clamped additive cumulative hazard H*(x) = ∫ₘˣ max(h(u) + β, 0) du,
 # summed exactly over the active panels between the clamp knots.
 function _identity_cumhazard_clamped(d::_IdentityModified, x::Real)
@@ -557,7 +569,11 @@ function _identity_cumhazard_clamped(d::_IdentityModified, x::Real)
         typeof(logccdf(d.dist, m)))
     xf <= m && return zero(T)
     c = -β
-    knots = _hazard_crossings(d.dist, m, xf, c)
+    # The scan runs to a deep base quantile capped at xf, independent of how
+    # far out xf is, so it always resolves the active band; the summation
+    # below still integrates the panels exactly up to xf.
+    scan_hi = min(xf, _scan_upper(d.dist))
+    knots = _hazard_crossings(d.dist, m, scan_hi, c)
     edges = [m; knots; xf]
     H = zero(T)
     @inbounds for i in 1:(length(edges) - 1)
