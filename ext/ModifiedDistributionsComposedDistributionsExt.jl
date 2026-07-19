@@ -39,6 +39,20 @@
 # `uncertain_specs`/`extra_leaf_params`/`set_extra_leaf_params`/`leaf_mean`/
 # `leaf_var`/`instantiate`/`has_varying`), and `get_dist` is ours. Either way
 # the extension depends on both packages' types, so there is no piracy.
+#
+# 3. The generated flat-vector codec's type-level companion (#189): the
+# instance-level hooks above (`free_leaf`, `extra_leaf_params`, ...) are not
+# enough for CD's `@generated` `unflatten`/`flat_dimension`/`flatten` -- those
+# work from a leaf's TYPE alone, before any instance exists. This extension's
+# `__init__` (bottom of this file) registers the four modifier types with
+# `ComposedDistributions.register_leaf_wrapper!` rather than adding a direct
+# dispatch method to CD's `_leaf_free_type`/`_extra_names_of`: a `@generated`
+# function's generator cannot reliably see such a method if it is added after
+# the generator has already compiled (confirmed Julia semantics gap,
+# ComposedDistributions#188/#189), so CD's registry takes plain data (a
+# type-parameter index, a fixed extra-names tuple) instead, populated at
+# `__init__` time -- before any code outside this package could construct one
+# of these leaf types.
 module ModifiedDistributionsComposedDistributionsExt
 
 import ModifiedDistributions: affine, weight, thin, cumulative,
@@ -51,7 +65,7 @@ import ComposedDistributions: free_leaf, rewrap_leaf, shared_tag,
                               set_extra_leaf_params, leaf_mean, leaf_var,
                               instantiate, has_varying
 using ComposedDistributions: Sequential, Parallel, observed_distribution,
-                             Shared, AbstractContext
+                             Shared, AbstractContext, register_leaf_wrapper!
 # Public composer interface for rebuilding a `Parallel` over modified branches:
 # `component_names` reads the ordered branch names, `event` fetches a named
 # branch, and the `parallel` constructor reassembles a `Parallel` from
@@ -295,5 +309,36 @@ has_varying(d::Affine) = has_varying(get_dist(d))
 has_varying(d::Weighted) = has_varying(get_dist(d))
 has_varying(d::Transformed) = has_varying(get_dist(d))
 has_varying(d::Modified) = has_varying(get_dist(d))
+
+# --- register with CD's generated-codec type-level registry (#189) ---------
+#
+# `free_index = 1` for all four: each wrapper's inner distribution is its
+# FIRST type parameter (`Affine{D,T,S}`, `Weighted{D,T,S}`, `Transformed{D,
+# Op,S}`, `Modified{D,E,L,S}}` all name it `D` first).
+#
+# `Transformed` needs TWO entries, since whether it owns an extra depends on
+# its `Op` type parameter, mirroring `extra_leaf_params`'s own instance-level
+# short-circuit exactly (a `ThinOp` owns the `:thin` factor and does not
+# forward to the inner delay's own extras; every other op -- `CumulativeOp`,
+# a bare callable -- owns none and peels through). The general case is
+# registered FIRST and the `ThinOp` case LAST, so the more specific pattern is
+# checked first (`register_leaf_wrapper!`'s "later registration wins"
+# contract).
+#
+# Called from `__init__`, not at module top level: `__init__` runs once this
+# extension is actually activated (both packages loaded), which is exactly
+# when CD's registry needs to be populated -- strictly before any code
+# outside this package could construct one of these leaf types (see
+# `register_leaf_wrapper!`'s docstring in ComposedDistributions for why that
+# ordering rules out the world-age hazard #189 describes).
+function __init__()
+    register_leaf_wrapper!(Affine; free_index = 1)
+    register_leaf_wrapper!(Weighted; free_index = 1)
+    register_leaf_wrapper!(Modified; free_index = 1)
+    register_leaf_wrapper!(Transformed; free_index = 1)
+    register_leaf_wrapper!(Transformed{D, <:ThinOp, S} where {D, S};
+        free_index = 1, extra_names = (:thin,))
+    return nothing
+end
 
 end # module

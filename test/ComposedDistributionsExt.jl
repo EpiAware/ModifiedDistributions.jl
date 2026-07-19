@@ -290,6 +290,83 @@ end
     @test mtbl.param == [:shape, :scale, :mu, :sigma]
 end
 
+@testitem "Modified extension: registered with CD's generated codec (#189)" begin
+    using Distributions
+    using ComposedDistributions: unflatten, flatten, flat_dimension, reconstruct,
+                                 uncertain, update, event, compose, free_leaf
+    using ModifiedDistributions: affine, weight, thin, modify
+
+    # The type-level codec hooks (#189, ComposedDistributions#178 PR 4) are
+    # only reachable through `register_leaf_wrapper!`'s registry, populated by
+    # this extension's `__init__` -- confirmed here loaded and correctly
+    # peeling every modifier family through the GENERATED codec
+    # (`flat_dimension`/`unflatten`/`flatten`/`reconstruct`), not just the
+    # runtime `params_table` walk the tests above exercise.
+
+    # Affine: fixed structure (scale/shift) peels away, leaving the inner
+    # Gamma's own two parameters estimated.
+    aff_tree = compose((onset = uncertain(
+        affine(Gamma(2.0, 1.0); scale = 2.0,
+            shift = 1.0);
+        shape = LogNormal(log(2.0), 0.2), scale = LogNormal(0.0, 0.2)),))
+    @test flat_dimension(aff_tree) == 2
+    nt = unflatten(aff_tree, [3.0, 1.5])
+    @test nt.onset.shape == 3.0 && nt.onset.scale == 1.5
+    @test flatten(aff_tree, nt) == [3.0, 1.5]
+    rebuilt = reconstruct(aff_tree, [3.0, 1.5])
+    @test rebuilt == update(aff_tree, nt)
+    @test free_leaf(event(rebuilt, :onset)) == Gamma(3.0, 1.5)
+
+    # Weighted: the weight is fixed structure, same shape as Affine.
+    wt_tree = compose((onset = uncertain(weight(Gamma(2.0, 1.0), 5.0);
+        shape = LogNormal(log(2.0), 0.2)),))
+    @test flat_dimension(wt_tree) == 1
+    wt_rebuilt = reconstruct(wt_tree, [3.0])
+    @test free_leaf(event(wt_rebuilt, :onset)) == Gamma(3.0, 1.0)
+    @test event(wt_rebuilt, :onset).weight == 5.0
+
+    # Modified: the effect/link are fixed structure, same shape again.
+    md_tree = compose((onset = uncertain(modify(Gamma(2.0, 1.0), 0.5);
+        shape = LogNormal(log(2.0), 0.2)),))
+    @test flat_dimension(md_tree) == 1
+    md_rebuilt = reconstruct(md_tree, [3.0])
+    @test free_leaf(event(md_rebuilt, :onset)) == Gamma(3.0, 1.0)
+
+    # Transformed carrying a ThinOp: the ONE case that owns an extra
+    # parameter of its own (the `#188` scenario this registration fixes) --
+    # two estimated parameters (shape, thin), not one.
+    th_tree = compose((onset = uncertain(thin(Gamma(2.0, 1.0), 0.3);
+        shape = LogNormal(log(2.0), 0.2), thin = Beta(2.0, 2.0)),))
+    @test flat_dimension(th_tree) == 2
+    th_nt = unflatten(th_tree, [3.0, 0.6])
+    @test th_nt.onset.shape == 3.0 && th_nt.onset.thin == 0.6
+    @test flatten(th_tree, th_nt) == [3.0, 0.6]
+    th_rebuilt = reconstruct(th_tree, [3.0, 0.6])
+    th_leaf = event(th_rebuilt, :onset)
+    @test free_leaf(th_leaf) == Gamma(3.0, 1.0)
+    @test th_leaf.op.factor == 0.6
+
+    # Transformed carrying a CumulativeOp (not a ThinOp): no extra, peels
+    # through exactly like Affine/Weighted/Modified -- the general
+    # Transformed registration, not the ThinOp-specific one, applies.
+    cu_tree = compose((onset = uncertain(ModifiedDistributions.cumulative(
+            Gamma(2.0, 1.0));
+        shape = LogNormal(log(2.0), 0.2)),))
+    @test flat_dimension(cu_tree) == 1
+
+    # Nested: thin(affine(Gamma(...))) -- the affine layer's scale/shift stay
+    # hidden, the thin factor is the one extra, and the native rows come from
+    # the innermost Gamma, exercising BOTH registered entries in one peel.
+    nested_tree = compose((onset = uncertain(
+        thin(affine(Gamma(2.0, 1.0); scale = 2.0, shift = 1.0), 0.3);
+        shape = LogNormal(log(2.0), 0.2), thin = Beta(2.0, 2.0)),))
+    @test flat_dimension(nested_tree) == 2
+    nested_rebuilt = reconstruct(nested_tree, [3.0, 0.6])
+    nested_leaf = event(nested_rebuilt, :onset)
+    @test free_leaf(nested_leaf) == Gamma(3.0, 1.0)
+    @test nested_leaf.op.factor == 0.6
+end
+
 @testitem "Modified extension: thin factor surfaces through params_table" begin
     using Distributions
     using ComposedDistributions
