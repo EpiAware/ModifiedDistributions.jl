@@ -83,7 +83,7 @@ Likewise `weight` replaces ad hoc `n * logpdf(d, x)` terms in model code with a 
 
 ## Related packages
 
-- [ComposedDistributions.jl](https://composeddistributions.epiaware.org/stable/) composes distributions into event-tree chains; a package extension here lets the modifier verbs apply across a chain's observed total, and ComposedDistributions.jl's own leaf-protocol support lets a modified leaf compose inside a chain.
+- [ComposedDistributions.jl](https://composeddistributions.epiaware.org/dev/) composes distributions into event-tree chains; a package extension here lets the modifier verbs apply across a chain's observed total, and ComposedDistributions.jl's own leaf-protocol support lets a modified leaf compose inside a chain.
 - [ConvolvedDistributions.jl](https://convolveddistributions.epiaware.org/dev/) sums independent delays and convolves count series; a package extension applies `thin`/`cumulative` to the convolved counts and lets modified distributions serve as convolution components.
 - [LoweredDistributions.jl](https://lowereddistributions.epiaware.org/dev/) turns a distribution into a backend-agnostic dynamical-systems representation; a package extension here lowers the modifiers that carry dynamics (an `affine` rescale, a `modify` hazard change on an `Exponential`) and refuses the observation-only ones (a shift, a `weight`, a forward transform) rather than approximating them.
 - [CensoredDistributions.jl](https://censoreddistributions.epiaware.org/stable/) builds primary-event and interval censoring on distributions, including ones already modified by this package.
