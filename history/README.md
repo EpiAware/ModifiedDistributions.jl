@@ -1,6 +1,6 @@
 # ModifiedDistributions.jl benchmark history
 
-Revisions: 640f798f28cde202f9bfa4ace09d2877c6346e06
+Revisions: 4082671ab9d557264a96d0be43da5ef79a2da59c
 
 See `table.md` for the ratio summary and the PNG
 files in this folder for per-benchmark timelines.
