@@ -48,7 +48,7 @@ EpiAwareADTools = {url = "https://github.com/EpiAware/EpiAwareADTools.jl", rev =
 LoweredDistributions = {url = "https://github.com/EpiAware/LoweredDistributions.jl", rev = "main"}
 
 [compat]
-AlgebraOfGraphics = "0.12"
+AlgebraOfGraphics = "0.12, 0.13"
 CairoMakie = "0.15"
 DataFramesMeta = "0.15"
 DifferentiationInterfaceTest = "0.9, 0.10"
