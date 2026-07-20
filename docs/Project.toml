@@ -34,12 +34,11 @@ ADFixtures = {path = "../test/ADFixtures"}
 # the kit is registered it is pinned by git, mirroring test/Project.toml.
 EpiAwarePackageTools = {url = "https://github.com/EpiAware/EpiAwarePackageTools.jl", rev = "main"}
 # ComposedDistributions (the ModifiedDistributionsComposedDistributionsExt
-# trigger, used by the composed-chains tutorial) and its hard-dep
-# ConvolvedDistributions are unregistered, so both are pinned by git.
-# ConvolvedDistributions must be a direct dep here because `[sources]` entries
-# only apply to the active project's direct dependencies.
+# trigger, used by the composed-chains tutorial) is unregistered, so it is
+# pinned by git. ConvolvedDistributions resolves from the registry (0.2.0)
+# pending the discrete-support design ruling (Convolved#85); see
+# ModifiedDistributions#92.
 ComposedDistributions = {url = "https://github.com/EpiAware/ComposedDistributions.jl", rev = "main"}
-ConvolvedDistributions = {url = "https://github.com/EpiAware/ConvolvedDistributions.jl", rev = "main"}
 EpiAwareADTools = {url = "https://github.com/EpiAware/EpiAwareADTools.jl", rev = "main"}
 # LoweredDistributions (used by the lowering tutorial; it now hosts the
 # modifier-leaf bridge itself in LoweredDistributionsModifiedDistributionsExt,

@@ -30,12 +30,11 @@ ModifiedDistributions = {path = ".."}
 # develop the kit alongside this package.
 EpiAwarePackageTools = {url = "https://github.com/EpiAware/EpiAwarePackageTools.jl", rev = "main"}
 # ComposedDistributions (the ModifiedDistributionsComposedDistributionsExt
-# trigger, exercised by the Sequential AD scenario) and its hard-dep
-# ConvolvedDistributions are unregistered, so both are pinned by git.
-# ConvolvedDistributions must be a direct dep here because `[sources]`
-# entries only apply to the active project's direct dependencies.
+# trigger, exercised by the Sequential AD scenario) is unregistered, so it
+# is pinned by git. ConvolvedDistributions resolves from the registry
+# (0.2.0) pending the discrete-support design ruling (Convolved#85); see
+# ModifiedDistributions#92.
 ComposedDistributions = {url = "https://github.com/EpiAware/ComposedDistributions.jl", rev = "main"}
-ConvolvedDistributions = {url = "https://github.com/EpiAware/ConvolvedDistributions.jl", rev = "main"}
 EpiAwareADTools = {url = "https://github.com/EpiAware/EpiAwareADTools.jl", rev = "main"}
 
 [compat]
