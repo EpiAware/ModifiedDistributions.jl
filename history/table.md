@@ -1,114 +1,114 @@
-|                                                                                   | 2d6c2b200d10be...   |
+|                                                                                   | c50e941399b784...   |
 |:----------------------------------------------------------------------------------|:-------------------:|
-| AD gradients/Affine LogNormal scale+shift logpdf/Enzyme forward                   | 8.11 ± 0.14 μs      |
-| AD gradients/Affine LogNormal scale+shift logpdf/Enzyme reverse                   | 2.98 ± 0.068 μs     |
-| AD gradients/Affine LogNormal scale+shift logpdf/ForwardDiff                      | 0.819 ± 0.13 μs     |
-| AD gradients/Affine LogNormal scale+shift logpdf/Mooncake forward                 | 7.15 ± 0.17 μs      |
-| AD gradients/Affine LogNormal scale+shift logpdf/Mooncake reverse                 | 18.1 ± 0.89 μs      |
-| AD gradients/Affine LogNormal scale+shift logpdf/ReverseDiff (tape)               | 16.4 ± 0.48 μs      |
-| AD gradients/Modified LogNormal identity-link logpdf/Enzyme forward               | 8.3 ± 0.13 μs       |
-| AD gradients/Modified LogNormal identity-link logpdf/Enzyme reverse               | 6.2 ± 1.4 μs        |
-| AD gradients/Modified LogNormal identity-link logpdf/ForwardDiff                  | 0.992 ± 0.026 μs    |
-| AD gradients/Modified LogNormal identity-link logpdf/Mooncake forward             | 8.84 ± 0.19 μs      |
-| AD gradients/Modified LogNormal identity-link logpdf/Mooncake reverse             | 0.0432 ± 0.0053 ms  |
-| AD gradients/Modified LogNormal identity-link logpdf/ReverseDiff (tape)           | 0.0317 ± 0.00071 ms |
-| AD gradients/Modified LogNormal log-link logpdf/Enzyme forward                    | 8.15 ± 0.12 μs      |
-| AD gradients/Modified LogNormal log-link logpdf/Enzyme reverse                    | 3.52 ± 0.079 μs     |
-| AD gradients/Modified LogNormal log-link logpdf/ForwardDiff                       | 0.902 ± 0.11 μs     |
-| AD gradients/Modified LogNormal log-link logpdf/Mooncake forward                  | 7.98 ± 0.17 μs      |
-| AD gradients/Modified LogNormal log-link logpdf/Mooncake reverse                  | 0.0405 ± 0.0043 ms  |
-| AD gradients/Modified LogNormal log-link logpdf/ReverseDiff (tape)                | 26.1 ± 0.69 μs      |
-| AD gradients/Product{Weighted} LogNormal vector logpdf/Enzyme forward             | 8.04 ± 0.28 μs      |
-| AD gradients/Product{Weighted} LogNormal vector logpdf/Enzyme reverse             | 1.07 ± 0.25 μs      |
-| AD gradients/Product{Weighted} LogNormal vector logpdf/ForwardDiff                | 0.952 ± 0.066 μs    |
-| AD gradients/Product{Weighted} LogNormal vector logpdf/Mooncake forward           | 7.34 ± 0.59 μs      |
-| AD gradients/Product{Weighted} LogNormal vector logpdf/Mooncake reverse           | 27.7 ± 1.9 μs       |
-| AD gradients/Product{Weighted} LogNormal vector logpdf/ReverseDiff (tape)         | 16.6 ± 0.5 μs       |
-| AD gradients/Thinned convolved series sum/Enzyme forward                          | 10.3 ± 0.25 μs      |
-| AD gradients/Thinned convolved series sum/Enzyme reverse                          | 14.8 ± 0.25 μs      |
-| AD gradients/Thinned convolved series sum/ForwardDiff                             | 3.33 ± 0.061 μs     |
-| AD gradients/Thinned convolved series sum/Mooncake forward                        | 13 ± 0.48 μs        |
-| AD gradients/Thinned convolved series sum/Mooncake reverse                        | 31.1 ± 4.5 μs       |
-| AD gradients/Thinned convolved series sum/ReverseDiff (tape)                      | 0.0359 ± 0.00079 ms |
-| AD gradients/Transformed cumulative LogNormal logpdf/Enzyme forward               | 7.66 ± 0.11 μs      |
-| AD gradients/Transformed cumulative LogNormal logpdf/Enzyme reverse               | 2 ± 0.074 μs        |
-| AD gradients/Transformed cumulative LogNormal logpdf/ForwardDiff                  | 0.531 ± 0.092 μs    |
-| AD gradients/Transformed cumulative LogNormal logpdf/Mooncake forward             | 5.76 ± 0.3 μs       |
-| AD gradients/Transformed cumulative LogNormal logpdf/Mooncake reverse             | 24.6 ± 6.7 μs       |
-| AD gradients/Transformed cumulative LogNormal logpdf/ReverseDiff (tape)           | 14.9 ± 0.44 μs      |
-| AD gradients/Transformed thin LogNormal logpdf/Enzyme forward                     | 7.64 ± 0.12 μs      |
-| AD gradients/Transformed thin LogNormal logpdf/Enzyme reverse                     | 1.99 ± 0.073 μs     |
-| AD gradients/Transformed thin LogNormal logpdf/ForwardDiff                        | 0.533 ± 0.089 μs    |
-| AD gradients/Transformed thin LogNormal logpdf/Mooncake forward                   | 5.74 ± 0.31 μs      |
-| AD gradients/Transformed thin LogNormal logpdf/Mooncake reverse                   | 24.8 ± 6.8 μs       |
-| AD gradients/Transformed thin LogNormal logpdf/ReverseDiff (tape)                 | 15 ± 0.46 μs        |
-| AD gradients/Weighted Affine LogNormal nested logpdf/Enzyme forward               | 7.82 ± 0.12 μs      |
-| AD gradients/Weighted Affine LogNormal nested logpdf/Enzyme reverse               | 0.964 ± 0.081 μs    |
-| AD gradients/Weighted Affine LogNormal nested logpdf/ForwardDiff                  | 0.832 ± 0.13 μs     |
-| AD gradients/Weighted Affine LogNormal nested logpdf/Mooncake forward             | 7.81 ± 0.24 μs      |
-| AD gradients/Weighted Affine LogNormal nested logpdf/Mooncake reverse             | 19.1 ± 0.96 μs      |
-| AD gradients/Weighted Affine LogNormal nested logpdf/ReverseDiff (tape)           | 18.1 ± 0.6 μs       |
-| AD gradients/Weighted LogNormal observation-time weight logpdf/Enzyme forward     | 7.58 ± 0.11 μs      |
-| AD gradients/Weighted LogNormal observation-time weight logpdf/Enzyme reverse     | 1.26 ± 0.42 μs      |
-| AD gradients/Weighted LogNormal observation-time weight logpdf/ForwardDiff        | 0.575 ± 0.088 μs    |
-| AD gradients/Weighted LogNormal observation-time weight logpdf/Mooncake forward   | 6.45 ± 0.36 μs      |
-| AD gradients/Weighted LogNormal observation-time weight logpdf/Mooncake reverse   | 30.3 ± 3 μs         |
-| AD gradients/Weighted LogNormal observation-time weight logpdf/ReverseDiff (tape) | 17.1 ± 0.47 μs      |
-| AD gradients/Weighted LogNormal scalar logpdf/Enzyme forward                      | 7.6 ± 0.11 μs       |
-| AD gradients/Weighted LogNormal scalar logpdf/Enzyme reverse                      | 1.25 ± 0.44 μs      |
-| AD gradients/Weighted LogNormal scalar logpdf/ForwardDiff                         | 0.576 ± 0.087 μs    |
-| AD gradients/Weighted LogNormal scalar logpdf/Mooncake forward                    | 6.47 ± 0.37 μs      |
-| AD gradients/Weighted LogNormal scalar logpdf/Mooncake reverse                    | 0.0377 ± 0.0032 ms  |
-| AD gradients/Weighted LogNormal scalar logpdf/ReverseDiff (tape)                  | 17.1 ± 0.45 μs      |
-| AD gradients/Weighted Sequential observed-total logpdf/Enzyme forward             | 0.111 ± 0.0034 ms   |
-| AD gradients/Weighted Sequential observed-total logpdf/Enzyme reverse             | 0.312 ± 0.027 ms    |
-| AD gradients/Weighted Sequential observed-total logpdf/ForwardDiff                | 0.0866 ± 0.0011 ms  |
-| AD gradients/Weighted Sequential observed-total logpdf/Mooncake forward           | 0.409 ± 0.015 ms    |
-| AD gradients/Weighted Sequential observed-total logpdf/Mooncake reverse           | 1.16 ± 0.054 ms     |
-| AD gradients/Weighted Sequential observed-total logpdf/ReverseDiff (tape)         | 2.28 ± 0.36 ms      |
-| Affine/LogNormal/ccdf                                                             | 3.51 ± 0.24 μs      |
-| Affine/LogNormal/cdf                                                              | 3.58 ± 0.45 μs      |
-| Affine/LogNormal/construction                                                     | 3.48 ± 0.001 ns     |
-| Affine/LogNormal/logpdf                                                           | 2.67 ± 0.4 μs       |
-| Affine/LogNormal/pdf                                                              | 4.23 ± 0.24 μs      |
-| Affine/LogNormal/quantile                                                         | 0.906 ± 0.025 μs    |
-| Affine/LogNormal/rand                                                             | 1.26 ± 0.064 μs     |
-| Baseline/LogNormal/ccdf                                                           | 2.73 ± 0.41 μs      |
-| Baseline/LogNormal/cdf                                                            | 2.72 ± 0.43 μs      |
-| Baseline/LogNormal/construction                                                   | 1.74 ± 0.01 ns      |
-| Baseline/LogNormal/logpdf                                                         | 1.55 ± 0.35 μs      |
-| Baseline/LogNormal/pdf                                                            | 3.35 ± 0.45 μs      |
-| Baseline/LogNormal/quantile                                                       | 0.441 ± 0.018 μs    |
-| Baseline/LogNormal/rand                                                           | 1.1 ± 0.039 μs      |
-| Modified/IdentityLink/ccdf                                                        | 8.5 ± 0.02 μs       |
-| Modified/IdentityLink/cdf                                                         | 8.16 ± 0.037 μs     |
-| Modified/IdentityLink/construction                                                | 3.13 ± 0.01 ns      |
-| Modified/IdentityLink/logpdf                                                      | 11.7 ± 0.07 μs      |
-| Modified/IdentityLink/pdf                                                         | 14.4 ± 0.051 μs     |
-| Modified/IdentityLink/quantile                                                    | 0.118 ± 0.00014 ms  |
-| Modified/IdentityLink/rand                                                        | 0.655 ± 0.016 ms    |
-| Modified/LogLink/ccdf                                                             | 6.18 ± 0.054 μs     |
-| Modified/LogLink/cdf                                                              | 6.7 ± 0.038 μs      |
-| Modified/LogLink/construction                                                     | 3.13 ± 0.01 ns      |
-| Modified/LogLink/logpdf                                                           | 7.79 ± 0.045 μs     |
-| Modified/LogLink/pdf                                                              | 8.87 ± 0.037 μs     |
-| Modified/LogLink/quantile                                                         | 0.883 ± 0.067 μs    |
-| Modified/LogLink/rand                                                             | 5.24 ± 0.15 μs      |
-| Transformed/cumulative/cdf                                                        | 2.72 ± 0.41 μs      |
-| Transformed/cumulative/construction                                               | 4.18 ± 0.01 ns      |
-| Transformed/cumulative/logpdf                                                     | 1.55 ± 0.36 μs      |
-| Transformed/cumulative/rand                                                       | 1.1 ± 0.041 μs      |
-| Transformed/thin/cdf                                                              | 2.73 ± 0.4 μs       |
-| Transformed/thin/construction                                                     | 3.13 ± 0.01 ns      |
-| Transformed/thin/logpdf                                                           | 1.55 ± 0.34 μs      |
-| Transformed/thin/rand                                                             | 1.1 ± 0.036 μs      |
-| Weighted/Product/construction                                                     | 0.407 ± 0.12 μs     |
-| Weighted/Product/logpdf                                                           | 3.04 ± 0.23 μs      |
-| Weighted/scalar/construction                                                      | 4.17 ± 1 ns         |
-| Weighted/scalar/logpdf                                                            | 1.64 ± 0.36 μs      |
-| time_to_load                                                                      | 0.632 ± 0.0089 s    |
+| AD gradients/Affine LogNormal scale+shift logpdf/Enzyme forward                   | 8.38 ± 0.11 μs      |
+| AD gradients/Affine LogNormal scale+shift logpdf/Enzyme reverse                   | 3.02 ± 0.073 μs     |
+| AD gradients/Affine LogNormal scale+shift logpdf/ForwardDiff                      | 0.742 ± 0.086 μs    |
+| AD gradients/Affine LogNormal scale+shift logpdf/Mooncake forward                 | 6.76 ± 0.29 μs      |
+| AD gradients/Affine LogNormal scale+shift logpdf/Mooncake reverse                 | 17.9 ± 0.8 μs       |
+| AD gradients/Affine LogNormal scale+shift logpdf/ReverseDiff (tape)               | 16.5 ± 0.45 μs      |
+| AD gradients/Modified LogNormal identity-link logpdf/Enzyme forward               | 8.67 ± 0.097 μs     |
+| AD gradients/Modified LogNormal identity-link logpdf/Enzyme reverse               | 5.85 ± 1.1 μs       |
+| AD gradients/Modified LogNormal identity-link logpdf/ForwardDiff                  | 0.989 ± 0.022 μs    |
+| AD gradients/Modified LogNormal identity-link logpdf/Mooncake forward             | 8.21 ± 0.18 μs      |
+| AD gradients/Modified LogNormal identity-link logpdf/Mooncake reverse             | 0.0433 ± 0.0056 ms  |
+| AD gradients/Modified LogNormal identity-link logpdf/ReverseDiff (tape)           | 0.0326 ± 0.0006 ms  |
+| AD gradients/Modified LogNormal log-link logpdf/Enzyme forward                    | 8.5 ± 0.08 μs       |
+| AD gradients/Modified LogNormal log-link logpdf/Enzyme reverse                    | 3.51 ± 0.061 μs     |
+| AD gradients/Modified LogNormal log-link logpdf/ForwardDiff                       | 0.906 ± 0.089 μs    |
+| AD gradients/Modified LogNormal log-link logpdf/Mooncake forward                  | 7.47 ± 0.15 μs      |
+| AD gradients/Modified LogNormal log-link logpdf/Mooncake reverse                  | 0.0403 ± 0.0041 ms  |
+| AD gradients/Modified LogNormal log-link logpdf/ReverseDiff (tape)                | 27 ± 0.59 μs        |
+| AD gradients/Product{Weighted} LogNormal vector logpdf/Enzyme forward             | 8.29 ± 0.19 μs      |
+| AD gradients/Product{Weighted} LogNormal vector logpdf/Enzyme reverse             | 1.03 ± 0.27 μs      |
+| AD gradients/Product{Weighted} LogNormal vector logpdf/ForwardDiff                | 0.871 ± 0.058 μs    |
+| AD gradients/Product{Weighted} LogNormal vector logpdf/Mooncake forward           | 6.86 ± 1 μs         |
+| AD gradients/Product{Weighted} LogNormal vector logpdf/Mooncake reverse           | 28 ± 2.4 μs         |
+| AD gradients/Product{Weighted} LogNormal vector logpdf/ReverseDiff (tape)         | 16.4 ± 0.39 μs      |
+| AD gradients/Thinned convolved series sum/Enzyme forward                          | 10.6 ± 0.17 μs      |
+| AD gradients/Thinned convolved series sum/Enzyme reverse                          | 14.6 ± 0.28 μs      |
+| AD gradients/Thinned convolved series sum/ForwardDiff                             | 3.26 ± 0.051 μs     |
+| AD gradients/Thinned convolved series sum/Mooncake forward                        | 12.3 ± 0.43 μs      |
+| AD gradients/Thinned convolved series sum/Mooncake reverse                        | 0.0339 ± 0.0053 ms  |
+| AD gradients/Thinned convolved series sum/ReverseDiff (tape)                      | 0.0371 ± 0.00066 ms |
+| AD gradients/Transformed cumulative LogNormal logpdf/Enzyme forward               | 8.04 ± 0.09 μs      |
+| AD gradients/Transformed cumulative LogNormal logpdf/Enzyme reverse               | 1.95 ± 0.042 μs     |
+| AD gradients/Transformed cumulative LogNormal logpdf/ForwardDiff                  | 0.512 ± 0.075 μs    |
+| AD gradients/Transformed cumulative LogNormal logpdf/Mooncake forward             | 5.51 ± 0.26 μs      |
+| AD gradients/Transformed cumulative LogNormal logpdf/Mooncake reverse             | 24 ± 6.7 μs         |
+| AD gradients/Transformed cumulative LogNormal logpdf/ReverseDiff (tape)           | 14.9 ± 0.43 μs      |
+| AD gradients/Transformed thin LogNormal logpdf/Enzyme forward                     | 8.02 ± 0.081 μs     |
+| AD gradients/Transformed thin LogNormal logpdf/Enzyme reverse                     | 1.95 ± 0.043 μs     |
+| AD gradients/Transformed thin LogNormal logpdf/ForwardDiff                        | 0.508 ± 0.074 μs    |
+| AD gradients/Transformed thin LogNormal logpdf/Mooncake forward                   | 5.5 ± 0.29 μs       |
+| AD gradients/Transformed thin LogNormal logpdf/Mooncake reverse                   | 24 ± 6.7 μs         |
+| AD gradients/Transformed thin LogNormal logpdf/ReverseDiff (tape)                 | 14.8 ± 0.42 μs      |
+| AD gradients/Weighted Affine LogNormal nested logpdf/Enzyme forward               | 8.18 ± 0.11 μs      |
+| AD gradients/Weighted Affine LogNormal nested logpdf/Enzyme reverse               | 0.937 ± 0.058 μs    |
+| AD gradients/Weighted Affine LogNormal nested logpdf/ForwardDiff                  | 0.778 ± 0.089 μs    |
+| AD gradients/Weighted Affine LogNormal nested logpdf/Mooncake forward             | 7.19 ± 0.15 μs      |
+| AD gradients/Weighted Affine LogNormal nested logpdf/Mooncake reverse             | 19.4 ± 0.87 μs      |
+| AD gradients/Weighted Affine LogNormal nested logpdf/ReverseDiff (tape)           | 18.2 ± 0.45 μs      |
+| AD gradients/Weighted LogNormal observation-time weight logpdf/Enzyme forward     | 7.97 ± 0.08 μs      |
+| AD gradients/Weighted LogNormal observation-time weight logpdf/Enzyme reverse     | 1.28 ± 0.33 μs      |
+| AD gradients/Weighted LogNormal observation-time weight logpdf/ForwardDiff        | 0.545 ± 0.069 μs    |
+| AD gradients/Weighted LogNormal observation-time weight logpdf/Mooncake forward   | 5.94 ± 0.7 μs       |
+| AD gradients/Weighted LogNormal observation-time weight logpdf/Mooncake reverse   | 29.4 ± 2.9 μs       |
+| AD gradients/Weighted LogNormal observation-time weight logpdf/ReverseDiff (tape) | 16.9 ± 0.48 μs      |
+| AD gradients/Weighted LogNormal scalar logpdf/Enzyme forward                      | 7.97 ± 0.083 μs     |
+| AD gradients/Weighted LogNormal scalar logpdf/Enzyme reverse                      | 1.28 ± 0.32 μs      |
+| AD gradients/Weighted LogNormal scalar logpdf/ForwardDiff                         | 0.539 ± 0.074 μs    |
+| AD gradients/Weighted LogNormal scalar logpdf/Mooncake forward                    | 5.97 ± 0.62 μs      |
+| AD gradients/Weighted LogNormal scalar logpdf/Mooncake reverse                    | 0.0359 ± 0.0034 ms  |
+| AD gradients/Weighted LogNormal scalar logpdf/ReverseDiff (tape)                  | 17 ± 0.43 μs        |
+| AD gradients/Weighted Sequential observed-total logpdf/Enzyme forward             | 0.112 ± 0.0026 ms   |
+| AD gradients/Weighted Sequential observed-total logpdf/Enzyme reverse             | 0.346 ± 0.027 ms    |
+| AD gradients/Weighted Sequential observed-total logpdf/ForwardDiff                | 0.0841 ± 0.00094 ms |
+| AD gradients/Weighted Sequential observed-total logpdf/Mooncake forward           | 0.411 ± 0.022 ms    |
+| AD gradients/Weighted Sequential observed-total logpdf/Mooncake reverse           | 1.22 ± 0.07 ms      |
+| AD gradients/Weighted Sequential observed-total logpdf/ReverseDiff (tape)         | 2.37 ± 0.3 ms       |
+| Affine/LogNormal/ccdf                                                             | 3.28 ± 0.37 μs      |
+| Affine/LogNormal/cdf                                                              | 3.36 ± 0.36 μs      |
+| Affine/LogNormal/construction                                                     | 3.1 ± 0.01 ns       |
+| Affine/LogNormal/logpdf                                                           | 2.64 ± 0.34 μs      |
+| Affine/LogNormal/pdf                                                              | 3.79 ± 0.36 μs      |
+| Affine/LogNormal/quantile                                                         | 0.493 ± 0.017 μs    |
+| Affine/LogNormal/rand                                                             | 1.26 ± 0.07 μs      |
+| Baseline/LogNormal/ccdf                                                           | 2.66 ± 0.33 μs      |
+| Baseline/LogNormal/cdf                                                            | 2.65 ± 0.34 μs      |
+| Baseline/LogNormal/construction                                                   | 1.55 ± 0.01 ns      |
+| Baseline/LogNormal/logpdf                                                         | 1.66 ± 0.29 μs      |
+| Baseline/LogNormal/pdf                                                            | 2.97 ± 0.32 μs      |
+| Baseline/LogNormal/quantile                                                       | 0.467 ± 0.017 μs    |
+| Baseline/LogNormal/rand                                                           | 1.02 ± 0.032 μs     |
+| Modified/IdentityLink/ccdf                                                        | 7.53 ± 0.025 μs     |
+| Modified/IdentityLink/cdf                                                         | 7.2 ± 0.03 μs       |
+| Modified/IdentityLink/construction                                                | 3.41 ± 0.001 ns     |
+| Modified/IdentityLink/logpdf                                                      | 10.5 ± 0.051 μs     |
+| Modified/IdentityLink/pdf                                                         | 12.7 ± 0.06 μs      |
+| Modified/IdentityLink/quantile                                                    | 0.111 ± 0.00017 ms  |
+| Modified/IdentityLink/rand                                                        | 0.576 ± 0.015 ms    |
+| Modified/LogLink/ccdf                                                             | 5.77 ± 0.047 μs     |
+| Modified/LogLink/cdf                                                              | 6.15 ± 0.032 μs     |
+| Modified/LogLink/construction                                                     | 3.1 ± 0.01 ns       |
+| Modified/LogLink/logpdf                                                           | 8 ± 0.033 μs        |
+| Modified/LogLink/pdf                                                              | 9.27 ± 0.041 μs     |
+| Modified/LogLink/quantile                                                         | 0.922 ± 0.069 μs    |
+| Modified/LogLink/rand                                                             | 5.13 ± 0.14 μs      |
+| Transformed/cumulative/cdf                                                        | 2.65 ± 0.34 μs      |
+| Transformed/cumulative/construction                                               | 4.02 ± 0.93 ns      |
+| Transformed/cumulative/logpdf                                                     | 1.66 ± 0.28 μs      |
+| Transformed/cumulative/rand                                                       | 1.02 ± 0.033 μs     |
+| Transformed/thin/cdf                                                              | 2.65 ± 0.32 μs      |
+| Transformed/thin/construction                                                     | 2.79 ± 0.01 ns      |
+| Transformed/thin/logpdf                                                           | 1.66 ± 0.3 μs       |
+| Transformed/thin/rand                                                             | 1.02 ± 0.033 μs     |
+| Weighted/Product/construction                                                     | 0.312 ± 0.11 μs     |
+| Weighted/Product/logpdf                                                           | 2.93 ± 0.2 μs       |
+| Weighted/scalar/construction                                                      | 4.02 ± 0.011 ns     |
+| Weighted/scalar/logpdf                                                            | 1.72 ± 0.29 μs      |
+| time_to_load                                                                      | 0.619 ± 0.013 s     |
 
-|                                                                                   | 2d6c2b200d10be...         |
+|                                                                                   | c50e941399b784...         |
 |:----------------------------------------------------------------------------------|:-------------------------:|
 | AD gradients/Affine LogNormal scale+shift logpdf/Enzyme forward                   | 0.044 k allocs: 1.52 kB   |
 | AD gradients/Affine LogNormal scale+shift logpdf/Enzyme reverse                   | 24  allocs: 0.969 kB      |
