@@ -32,7 +32,6 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 # CD PR #216 (ComposedDistributions#189) merged `register_leaf_wrapper!` to
 # `main`, so this __init__ registration now resolves against `main` again.
 ComposedDistributions = {rev = "main", url = "https://github.com/EpiAware/ComposedDistributions.jl"}
-ConvolvedDistributions = {rev = "main", url = "https://github.com/EpiAware/ConvolvedDistributions.jl"}
 EpiAwareADTools = {rev = "main", url = "https://github.com/EpiAware/EpiAwareADTools.jl"}
 EpiAwarePackageTools = {rev = "main", url = "https://github.com/EpiAware/EpiAwarePackageTools.jl"}
 ModifiedDistributions = {path = ".."}
@@ -43,7 +42,7 @@ Aqua = "0.8"
 BenchmarkTools = "1"
 Coverage = "1.8.1"
 DifferentiationInterface = "0.6, 0.7"
-DifferentiationInterfaceTest = "0.9, 0.10"
+DifferentiationInterfaceTest = "0.9, 0.10, 0.11"
 Distributions = "0.25"
 Documenter = "1"
 ExplicitImports = "1"

@@ -393,6 +393,8 @@ end
 @testitem "Modified extension: thin factor round-trips through update" begin
     using Distributions
     using ComposedDistributions
+    # CD#243: `update` is `public`, not exported, so reach it explicitly.
+    using ComposedDistributions: update
     using ModifiedDistributions
     using ModifiedDistributions: thin, affine, get_dist
     import ComposedDistributions: set_extra_leaf_params
@@ -422,6 +424,8 @@ end
 @testitem "Modified extension: uncertain specs seen through a modifier" begin
     using Distributions, Random
     using ComposedDistributions
+    # CD#243: `update` is `public`, not exported, so reach it explicitly.
+    using ComposedDistributions: update
     using ModifiedDistributions: affine, modify
 
     u = uncertain(Gamma(2.0, 1.0); shape = LogNormal(log(2.0), 0.2))
@@ -617,6 +621,9 @@ end
 @testitem "Modified extension: convolve_series with an affine chain step" begin
     using Distributions
     using ComposedDistributions
+    # CD#228 (open): ComposedDistributions no longer re-exports
+    # ConvolvedDistributions' convolution surface, so reach it directly.
+    using ConvolvedDistributions: convolve_series, discretise_pmf, convolved
     using ModifiedDistributions: affine
 
     aff = affine(Gamma(2.0, 1.0); scale = 2.0, shift = 1.0)
@@ -624,14 +631,12 @@ end
     series = [0.0, 1.0, 3.0, 6.0, 8.0, 5.0, 2.0]
 
     # observed_distribution keeps the affine step (it is the observed delay,
-    # not a free parameter), so convolving the chain honours it. Under
-    # ConvolvedDistributions 0.2 the bare-distribution convolve_series is
-    # discrete-only, so the chain path discretises the observed total first;
-    # the hand-built equivalents discretise the same total before convolving.
-    out = convolve_series(chain, series)
+    # not a free parameter), so convolving the chain honours it. CD#226/#228:
+    # convolve_series no longer discretises a continuous observed total on the
+    # caller's behalf, so the chain path discretises explicitly, exactly like
+    # the hand-built equivalent.
     maxlag = length(series) - 1
-    @test out ==
-          convolve_series(discretise_pmf(observed_distribution(chain), maxlag),
+    out = convolve_series(discretise_pmf(observed_distribution(chain), maxlag),
         series)
     @test out ==
           convolve_series(discretise_pmf(convolved(aff, Gamma(3.0, 1.0)), maxlag),
@@ -706,6 +711,10 @@ end
 @testitem "Modified extension: modified leaves drive convolve_series (#117)" begin
     using Distributions
     using ComposedDistributions
+    # CD#228 (open): ComposedDistributions no longer re-exports
+    # ConvolvedDistributions' convolution surface, so reach it directly.
+    using ConvolvedDistributions: convolve_series, discretise_pmf, convolved,
+                                  Convolved
     using ModifiedDistributions: affine, weight, thin
 
     # ModifiedDistributions#40: a Modified-wrapped chain step must participate
@@ -713,9 +722,10 @@ end
     # silently dropped. Each modifier family (affine / weight / thin) wraps
     # the first step of a Sequential; the chain lowers through
     # observed_distribution and convolve_series identically to the hand-built
-    # Convolved of the same wrapped leaf. Under ConvolvedDistributions 0.2 the
-    # bare convolve_series is discrete-only, so the observed total is
-    # discretised first. One matrix cell per modifier.
+    # Convolved of the same wrapped leaf. CD#226/#228: convolve_series no
+    # longer discretises a continuous observed total on the caller's behalf,
+    # so the observed total is discretised explicitly. One matrix cell per
+    # modifier.
     series = [0.0, 1.0, 3.0, 6.0, 8.0, 5.0, 2.0]
     maxlag = length(series) - 1
     tail = Gamma(3.0, 1.0)
@@ -734,8 +744,7 @@ end
         # The convolved output matches discretising the observed total by
         # hand, and equals the direct Convolved of the wrapped leaf and the
         # tail.
-        out = convolve_series(chain, series)
-        @test out == convolve_series(discretise_pmf(od, maxlag), series)
+        out = convolve_series(discretise_pmf(od, maxlag), series)
         @test out ==
               convolve_series(discretise_pmf(convolved(mod, tail), maxlag),
             series)
@@ -746,6 +755,8 @@ end
 @testitem "Modified extension: extra param survives an unsupplied round-trip" begin
     using Distributions, Random
     using ComposedDistributions
+    # CD#243: `update` is `public`, not exported, so reach it explicitly.
+    using ComposedDistributions: update
     using ModifiedDistributions: thin, get_dist
     import ComposedDistributions: extra_leaf_params
 
