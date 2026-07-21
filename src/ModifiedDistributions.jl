@@ -58,6 +58,9 @@ export weight
 export series_transform, thin, cumulative
 # `modify`: a hazard modification through a link (proportional or additive).
 export modify
+# The queryable sub-stochastic-law surface: the mass a `modify`d law holds,
+# and whether any is missing (#107).
+export total_mass, is_defective
 # The generic unwrap protocol owned by this package.
 export get_dist, get_dist_recursive
 

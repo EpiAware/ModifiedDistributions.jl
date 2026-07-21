@@ -494,3 +494,61 @@ end
     g_fdv = [fdcheck(t -> (θ = copy(θ0); θ[i] = t; f(θ)), θ0[i]) for i in 1:5]
     @test g ≈ g_fdv atol=1e-4
 end
+
+@testitem "Modified total_mass and is_defective: proper laws are never defective" begin
+    using Distributions
+
+    # Proportional hazards (log link): S* = S^θ, θ = exp(β) > 0, always decays
+    # to zero. Never defective regardless of the sign of β.
+    for beta in (-0.5, 0.0, 0.7)
+        d = modify(LogNormal(1.5, 0.5), beta; link = log)
+        @test total_mass(d) == 1.0
+        @test !is_defective(d)
+    end
+
+    # Additive hazards (identity link) with a non-negative effect only adds
+    # hazard. Never defective.
+    for beta in (0.0, 0.3, 1.2)
+        d = modify(Weibull(2.0, 3.0), beta; link = identity)
+        @test total_mass(d) == 1.0
+        @test !is_defective(d)
+    end
+
+    # Discrete per-bin reporting hazard: the final-bin hazard is pinned to
+    # one, so the reconstructed PMF always sums to one. Never defective.
+    grid = collect(0:4)
+    base = DiscreteNonParametric(grid, fill(0.2, 5))
+    for beta in (fill(0.3, 5), fill(-0.9, 5))
+        d = modify(base, beta; link = :logit)
+        @test total_mass(d) == 1.0
+        @test !is_defective(d)
+    end
+end
+
+@testitem "Modified total_mass and is_defective: negative additive clamp" begin
+    using Distributions
+
+    # A strong negative additive effect on a LogNormal (peaked, then decaying
+    # hazard) clamps most of the hazard away and leaves the law sub-stochastic:
+    # matches the plateaued cdf already exercised by the quantile-throws test.
+    d = modify(LogNormal(1.5, 0.5), -0.4; link = identity)
+    @test total_mass(d) ≈ 0.042346 atol=1e-5
+    @test is_defective(d)
+
+    # The complementary ccdf reports the same deficit consistently: as x grows
+    # the residual survival converges to 1 - total_mass(d).
+    @test ccdf(d, 1.0e6) ≈ 1 - total_mass(d) atol=1e-8
+    @test cdf(d, 1.0e6) ≈ total_mass(d) atol=1e-8
+
+    # A mild negative effect on a monotone-decreasing (Exponential) hazard
+    # never clamps away all the mass permanently: still proper.
+    dp = modify(Weibull(2.0, 3.0), -0.1; link = identity)
+    @test total_mass(dp) ≈ 1.0 atol=1e-6
+    @test !is_defective(dp)
+
+    # A base with a finite upper support bound is evaluated exactly at that
+    # bound rather than by numeric cap search.
+    trunc_base = truncated(LogNormal(1.5, 0.5); upper = 10.0)
+    dt = modify(trunc_base, -0.4; link = identity)
+    @test total_mass(dt) ≈ cdf(dt, 10.0)
+end
