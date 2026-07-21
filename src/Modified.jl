@@ -950,3 +950,118 @@ for f in (:pdf, :logpdf, :cdf, :logcdf, :ccdf, :logccdf)
         return map(Base.Fix1(Distributions.$f, d), x)
     end
 end
+
+# ============================================================================
+# Sub-stochastic laws: total_mass and is_defective (#107)
+# ============================================================================
+#
+# A negative additive-hazard effect (the identity-link clamped closed form)
+# or a clamped numeric cumulative-hazard modification can leave part of the
+# base's probability mass escaping past the support: the modified law is
+# sub-stochastic, its `cdf` converging to a value below one. `total_mass`
+# exposes that limiting value as a queryable quantity and `is_defective`
+# reports whether any mass is missing, so a caller can inspect the deficit
+# before issuing a `quantile`/`rand` query that would otherwise throw (see
+# their defective-law `ArgumentError`s above). The complementary `ccdf`
+# already reports the residual deficit consistently (`ccdf(d, x) -> 1 -
+# total_mass(d)` as `x` grows through the support), since it is the same
+# clamped survival the closed forms and the quadrature extension compute; no
+# separate bookkeeping is needed.
+#
+# Scope: defined for `Modified` only. The other modifier leaves (`Affine`,
+# `Weighted`, `Transformed`) are either a reparameterisation or logpdf-
+# transparent and never introduce a deficit of their own; peeling
+# `total_mass` through a modifier stack (e.g. a `weight`-wrapped `Modified`)
+# is left to the cross-org defective-law epic (ComposedDistributions#252)
+# alongside its general accessor surface, rather than guessed here.
+
+const _DEFECTIVE_TOL = 1e-9
+
+@doc "
+
+Return the total probability mass a [`Modified`](@ref) law holds.
+
+`1` for a proper law; below `1` for a sub-stochastic (defective) law, where a
+negative additive-hazard effect (or a clamped numeric hazard modification) has
+left part of the base's mass escaping past the support. The complementary
+`ccdf` reports the residual deficit consistently: `ccdf(d, x)` converges to
+`1 - total_mass(d)` as `x` grows through the support.
+
+# Arguments
+- `d`: a [`Modified`](@ref) distribution.
+
+# Examples
+```@example
+using ModifiedDistributions, Distributions
+
+d = modify(Exponential(1.0), -0.5; link = ModifiedDistributions.IdentityLink)
+total_mass(d) < 1
+```
+
+# See also
+- [`is_defective`](@ref): whether any mass is missing.
+"
+function total_mass end
+
+@doc "
+
+Report whether a [`Modified`](@ref) law is sub-stochastic (defective).
+
+`true` when [`total_mass`](@ref)`(d) < 1`.
+
+# Arguments
+- `d`: a [`Modified`](@ref) distribution.
+
+# Examples
+```@example
+using ModifiedDistributions, Distributions
+
+d = modify(Exponential(1.0), -0.5; link = ModifiedDistributions.IdentityLink)
+is_defective(d)
+```
+
+# See also
+- [`total_mass`](@ref): the mass the law actually holds.
+"
+is_defective(d::Modified) = total_mass(d) < 1 - _DEFECTIVE_TOL
+
+# Proportional hazards (log link): S* = S^θ, θ = exp(β) > 0, so S*(∞) = 0
+# whenever the base survival vanishes. Never defective.
+total_mass(::_LogModified) = 1.0
+
+# Additive hazards (identity link): a non-negative effect only adds hazard, so
+# S*(∞) = 0 as for the base. Never defective. A negative effect clamps the
+# hazard and can leave mass beyond the support (see `_defective_total_mass`).
+function total_mass(d::_IdentityModified)
+    β = d.effect
+    return β >= zero(β) ? 1.0 : _defective_total_mass(d)
+end
+
+# Discrete per-bin reporting hazard: the final-bin hazard is pinned to one,
+# so the reconstructed PMF always sums to one. Never defective.
+total_mass(::_DiscreteModified) = 1.0
+
+# Numeric cumulative-hazard path (callable/general-link effect): a clamped
+# hazard can likewise leave escaping mass, so it is searched the same way.
+total_mass(d::_NumericModified) = _defective_total_mass(d)
+
+# The limiting cdf as x grows without bound: the total probability mass a
+# clamped modified law holds. Evaluated exactly at the base's own finite
+# maximum when the support is bounded; otherwise doubles the query point from
+# a deep base quantile until successive cdfs agree to `_DEFECTIVE_TOL`,
+# mirroring the bracket the `quantile` methods already expand to detect a
+# defective law (see their `ArgumentError`s above).
+function _defective_total_mass(d; maxiter::Int = 64)
+    hicap = float(maximum(d.dist))
+    isfinite(hicap) && return cdf(d, hicap)
+    lo = float(minimum(d))
+    hi = max(float(quantile(d.dist, 1 - 1e-12)), lo + one(lo))
+    prev = cdf(d, hi)
+    for _ in 1:maxiter
+        hi = lo + 2 * (hi - lo)
+        cur = cdf(d, hi)
+        abs(cur - prev) < _DEFECTIVE_TOL && return cur
+        prev = cur
+    end
+    return prev
+end

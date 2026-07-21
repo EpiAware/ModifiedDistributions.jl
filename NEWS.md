@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Added `total_mass(d)`/`is_defective(d)` for a `modify`d law: a public, queryable surface for the sub-stochastic (defective) laws a negative additive-hazard effect (or a clamped numeric hazard modification) can produce, so a caller can inspect the missing mass before issuing a `quantile`/`rand` query that would otherwise throw. `total_mass` is exact (`1`) for the proportional-hazards, non-negative additive-hazard and discrete per-bin paths, which never clamp away mass, and is numerically searched for the clamped identity-link and numeric cumulative-hazard paths, guaranteed consistent with `ccdf`'s residual deficit (#107).
 - **Breaking:** the `ModifiedDistributionsLoweredDistributionsExt` extension and
   the `LoweredDistributions` weakdep are removed (LD#51, the #23 hub-owned
   decision). `LoweredDistributions` now hosts the `lower` bridge for the
