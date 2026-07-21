@@ -37,6 +37,13 @@ public IdentityLink
 public LogitLink
 public hazard_link
 
+# The piecewise-constant proportional-hazards multiplier effect type,
+# public so downstream code can dispatch on it (e.g. read
+# `get_effect(d).breaks`/`.multipliers` off a `PiecewiseEffect`-modified
+# leaf); constructed through the exported `piecewise_effect`/`gate` verbs
+# (#105).
+public PiecewiseEffect
+
 # The discrete-time reporting-hazard vector helpers reused by the discrete
 # `modify` path (public but not exported): the PMF <-> hazard maps and the
 # per-bin logit-effect reshaping.

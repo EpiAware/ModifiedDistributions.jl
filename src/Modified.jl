@@ -202,6 +202,97 @@ function _as_hazard_link(s::Symbol)
     throw(ArgumentError("unknown link $(s); use :log, :identity or :logit"))
 end
 
+@doc "
+
+A piecewise-constant proportional-hazards multiplier, for [`modify`](@ref)
+under the log link.
+
+Breaks the base hazard's time axis at `breaks` (strictly increasing) into
+`length(breaks) + 1` half-open segments `[m, breaks[1])`,
+`[breaks[1], breaks[2])`, …, `[breaks[end], ∞)` — a breakpoint value itself
+belongs to the segment it OPENS, matching a right-continuous step function
+(the segment strictly below a breakpoint uses the earlier multiplier, the
+segment starting AT the breakpoint uses the next one). Segment `i`'s hazard
+is `multipliers[i]` times the base hazard, giving a closed-form cumulative
+hazard (a sum of base log-survival differences, #105) and needing no
+quadrature backend. A zero multiplier switches a segment's hazard off
+entirely; a trailing zero multiplier (as [`gate`](@ref) builds) leaves a
+sub-stochastic (defective) law, queryable through [`total_mass`](@ref)/
+[`is_defective`](@ref).
+
+# Arguments
+- `breaks`: strictly increasing breakpoints on the base's time axis.
+- `multipliers`: one more entry than `breaks`, each a non-negative
+  proportional-hazards multiplier for its segment.
+
+# Examples
+```@example
+using ModifiedDistributions, Distributions
+
+# Hazard multiplier 1 before t=1, 2 on [1, 3), 0.5 from t=3 onward.
+piecewise_effect(; breaks = [1.0, 3.0], multipliers = [1.0, 2.0, 0.5])
+```
+
+# See also
+- [`modify`](@ref): the verb `piecewise_effect` is an `effect` argument to.
+- [`gate`](@ref): the finite-window special case (a defective law).
+"
+struct PiecewiseEffect{TB <: AbstractVector{<:Real}, TM <: AbstractVector{<:Real}}
+    "Strictly increasing breakpoints on the base's time axis."
+    breaks::TB
+    "One more entry than `breaks`: each segment's non-negative hazard
+    multiplier, in segment order."
+    multipliers::TM
+
+    function PiecewiseEffect(breaks::TB,
+            multipliers::TM) where {
+            TB <: AbstractVector{<:Real}, TM <: AbstractVector{<:Real}}
+        length(multipliers) == length(breaks) + 1 ||
+            throw(ArgumentError(
+                "piecewise_effect needs one more multiplier than " *
+                "breakpoints (length(multipliers) == length(breaks) + 1); " *
+                "got $(length(breaks)) breaks and $(length(multipliers)) " *
+                "multipliers"))
+        issorted(breaks; lt = <=) ||
+            throw(ArgumentError(
+                "piecewise_effect breakpoints must be strictly increasing; " *
+                "got $(breaks)"))
+        all(m -> m >= zero(m), multipliers) ||
+            throw(ArgumentError(
+                "piecewise_effect multipliers must be non-negative (a " *
+                "proportional-hazards multiplier); got $(multipliers)"))
+        return new{TB, TM}(breaks, multipliers)
+    end
+end
+
+@doc "
+
+Build a [`PiecewiseEffect`](@ref): a piecewise-constant proportional-hazards
+multiplier, for [`modify`](@ref) under the log link.
+
+# Keyword Arguments
+- `breaks`: strictly increasing breakpoints on the base's time axis.
+- `multipliers`: one more entry than `breaks`, each a non-negative
+  hazard multiplier for its segment.
+
+# Examples
+```@example
+using ModifiedDistributions, Distributions
+
+d = modify(Weibull(1.5, 2.0),
+    piecewise_effect(; breaks = [1.0, 3.0], multipliers = [1.0, 2.0, 0.5]);
+    link = ModifiedDistributions.LogLink)
+logpdf(d, 1.5)
+```
+
+# See also
+- [`gate`](@ref): the finite-window special case (a defective law).
+"
+function piecewise_effect(;
+        breaks::AbstractVector{<:Real}, multipliers::AbstractVector{<:Real})
+    return PiecewiseEffect(breaks, multipliers)
+end
+
 @doc """
 
 A distribution whose hazard is modified through a link.
@@ -232,6 +323,11 @@ the link:
   clamp knots (no quadrature);
 - discrete base, per-bin vector effect: exact per-bin PMF reconstruction
   through the discrete-time reporting hazard, for any link;
+- continuous base, [`LogLink`](@ref) with a [`PiecewiseEffect`](@ref)
+  ([`piecewise_effect`](@ref)/[`gate`](@ref)): a piecewise-constant
+  proportional-hazards multiplier, analytic (a sum of base log-survival
+  differences, no quadrature); a trailing zero multiplier (`gate`) leaves a
+  deliberately defective law (#105);
 - continuous base, callable `effect(t)` (any link) or a scalar effect under a
   general link: the modified cumulative hazard
   ``H^{*}(t) = \\int_m^t \\max(g^{-1}(g(h(u)) + \\text{effect}(u)), 0)\\,du``
@@ -275,6 +371,16 @@ struct Modified{D <: UnivariateDistribution, E, L <: HazardLink,
                 "a discrete base distribution requires a per-bin vector " *
                 "effect (the discrete-time reporting-hazard path); a scalar " *
                 "or callable effect modifies a continuous base"))
+        elseif effect isa PiecewiseEffect
+            # A piecewise-constant multiplier is a proportional-hazards
+            # concept (segment i scales the WHOLE base hazard by
+            # multipliers[i]); it only pairs with the log link, where that
+            # closed form holds (#105).
+            L === typeof(LogLink) ||
+                throw(ArgumentError(
+                    "a PiecewiseEffect (piecewise_effect/gate) is a " *
+                    "proportional-hazards multiplier and only pairs with " *
+                    "the log link; got link = $(link)"))
         elseif !(effect isa Real || effect isa Function)
             throw(ArgumentError(
                 "a continuous base distribution needs a scalar `Real` effect " *
@@ -388,11 +494,56 @@ function modify(dist::UnivariateDistribution, ::Nothing; link = log)
     return dist
 end
 
+@doc "
+
+Gate a distribution to a finite window: the event can only occur in
+`[opens, closes]`, and never occurs outside it.
+
+A [`piecewise_effect`](@ref) special case (breaks at `opens`/`closes`,
+multipliers `0`/`1`/`0` under the log link): the hazard is off before
+`opens` (survival stays at one), the base hazard runs unmodified inside the
+window, and it switches off again at `closes` (survival flattens there
+forever). The flattened residual survival is the probability the event
+never occurs, making the result a deliberately sub-stochastic (defective)
+law: query it with [`total_mass`](@ref)/[`is_defective`](@ref), the same
+accessor any other defective wrapper reads through.
+
+# Arguments
+- `dist`: the base distribution to gate.
+- `opens`: the window's opening time (the event cannot occur before this).
+- `closes`: the window's closing time (the event never occurs after this).
+
+# Examples
+```@example
+using ModifiedDistributions, Distributions
+
+g = gate(Weibull(1.5, 2.0), 1.0, 3.0)
+is_defective(g)
+```
+
+# See also
+- [`piecewise_effect`](@ref): the general piecewise-constant multiplier.
+- [`total_mass`](@ref), [`is_defective`](@ref): query the residual mass.
+"
+function gate(dist::UnivariateDistribution, opens::Real, closes::Real)
+    opens < closes ||
+        throw(ArgumentError(
+            "gate needs opens < closes; got opens = $(opens), " *
+            "closes = $(closes)"))
+    effect = piecewise_effect(;
+        breaks = [opens, closes], multipliers = [0.0, 1.0, 0.0])
+    return modify(dist, effect; link = LogLink)
+end
+
 # Parameter extraction: inner params followed by the hazard effect. A callable
-# effect carries no numeric parameters, so only the base params surface then.
+# effect carries no numeric parameters, so only the base params surface then;
+# a PiecewiseEffect likewise carries its own breaks/multipliers rather than a
+# single scalar, so it is left off this flat tuple too (surfacing them as
+# free parameters is a composed-tree-level decision, out of scope here).
 function params(d::Modified)
     base = params(d.dist)
-    return d.effect isa Function ? base : (base..., d.effect)
+    return d.effect isa Union{Function, PiecewiseEffect} ? base :
+           (base..., d.effect)
 end
 
 # Hazard modification never changes the support, so element type, support
@@ -732,11 +883,145 @@ function logpdf(d::_NumericModified, x::Real)
 end
 
 # ============================================================================
+# Continuous, log link: piecewise-constant proportional-hazards multiplier
+# ============================================================================
+#
+# Segment i (see PiecewiseEffect's docstring for the half-open convention)
+# scales the WHOLE base hazard by multipliers[i], so the modified cumulative
+# hazard is a sum of base log-survival differences over the segments fully
+# below `x`, plus the partial contribution of `x`'s own segment — closed
+# form, no quadrature (#105).
+
+const _PiecewiseModified = Modified{
+    <:UnivariateDistribution{Continuous}, <:PiecewiseEffect, typeof(LogLink)}
+
+# The segment index (1-based, 1..length(multipliers)) containing `x`, under
+# the half-open `[breaks[i-1], breaks[i])` convention: a breakpoint value
+# itself belongs to the segment it OPENS. `breaks` is pinned to
+# `AbstractVector` so this resolves to `Base`'s plain-array
+# `searchsortedlast` (returning an `Int`) rather than JET seeing a wider,
+# type-unstable method set (e.g. a sorted-container package's own
+# `searchsortedlast` returning a token type) across an unconstrained
+# `breaks::Any`.
+function _piecewise_segment(breaks::AbstractVector, x::Real)
+    return searchsortedlast(breaks, x) + 1
+end
+
+# The modified cumulative hazard H*(x) = Σ multipliers[i] * (H(segment i's
+# upper edge) - H(segment i's lower edge)), summed over segments fully below
+# `x` plus the partial contribution of `x`'s own segment. Uses
+# `logccdf(dist, ·) `directly (H = -logS), so every term is exact and no
+# quadrature is needed. The accumulator's element type promotes `x`, the
+# support minimum and the multipliers together, so a `Dual`/tracked
+# multiplier (or breakpoint, through the segment boundaries it evaluates
+# `logccdf` at) differentiates through.
+function _piecewise_cumhazard(dist, breaks, multipliers, x::Real)
+    m = float(minimum(dist))
+    xf = float(x)
+    # Promotes every contributing element type together (the query, the
+    # support minimum, the multipliers, the breakpoints -- since a segment
+    # boundary's own `logccdf` call carries a differentiated breakpoint's
+    # type -- and the base's own `logccdf` type), so a `Dual`/tracked
+    # multiplier OR breakpoint keeps the accumulator at the widened type
+    # throughout rather than narrowing back to `Float64` partway through.
+    T = promote_type(typeof(xf), typeof(m), eltype(multipliers),
+        eltype(breaks), typeof(logccdf(dist, m)))
+    xf <= m && return zero(T)
+    i = _piecewise_segment(breaks, xf)
+    H = zero(T)
+    lower = m
+    @inbounds for j in 1:(i - 1)
+        upper = breaks[j]
+        H += multipliers[j] * (logccdf(dist, lower) - logccdf(dist, upper))
+        lower = upper
+    end
+    H += multipliers[i] * (logccdf(dist, lower) - logccdf(dist, xf))
+    return H
+end
+
+@doc "
+
+Compute the log survival function on the piecewise-constant
+proportional-hazards path.
+
+See also: [`ccdf`](@ref), [`logpdf`](@ref)
+"
+function logccdf(d::_PiecewiseModified, x::Real)
+    x <= minimum(d.dist) && return zero(float(typeof(x)))
+    effect = d.effect
+    return -_piecewise_cumhazard(d.dist, effect.breaks, effect.multipliers, x)
+end
+
+@doc "
+
+Compute the log probability density on the piecewise-constant
+proportional-hazards path.
+
+See also: [`pdf`](@ref), [`ccdf`](@ref)
+"
+function logpdf(d::_PiecewiseModified, x::Real)
+    insupport(d, x) || return oftype(float(x), -Inf)
+    effect = d.effect
+    i = _piecewise_segment(effect.breaks, x)
+    θ = effect.multipliers[i]
+    logS = logccdf(d, x)
+    # A zero multiplier switches this segment's hazard (and so its density)
+    # off entirely, regardless of the base's own density there.
+    θ > zero(θ) || return oftype(logS, -Inf)
+    # `_base_hazard` saturates to `Inf` rather than `NaN` at a numerically
+    # exhausted base survival (see its docstring above), so `log(θ * h)`
+    # stays finite-or-`Inf`, never `NaN`, matching the identity closed form.
+    h = _base_hazard(d.dist, x)
+    return log(θ * h) + logS
+end
+
+@doc "
+
+Compute the quantile by monotone bisection of the piecewise-constant
+modified cdf.
+
+A trailing zero multiplier (as [`gate`](@ref) builds) can leave the law
+defective (sub-stochastic); when the requested `p` exceeds the total mass
+the quantile is undefined and this throws an `ArgumentError` rather than
+returning a garbage bracket.
+
+See also: [`cdf`](@ref)
+"
+function quantile(d::_PiecewiseModified, p::Real)
+    zero(p) <= p <= one(p) ||
+        throw(DomainError(p, "quantile requires p in [0, 1]"))
+    p == zero(p) && return float(minimum(d))
+    p == one(p) && return float(maximum(d))
+    lo = float(minimum(d))
+    hi = max(float(quantile(d.dist, p)), lo + one(lo) / 2)
+    for _ in 1:200
+        cdf(d, hi) >= p && break
+        hi = lo + 2 * (hi - lo)
+    end
+    cdf(d, hi) >= p || throw(ArgumentError(
+        "the piecewise-modified law is defective (sub-stochastic) for this " *
+        "multiplier schedule: its total probability mass is below $(p), " *
+        "so the $(p)-quantile is undefined. A trailing zero multiplier " *
+        "(e.g. `gate`) leaves residual survival that never resolves."))
+    while true
+        mid = (lo + hi) / 2
+        (mid == lo || mid == hi) && break
+        cdf(d, mid) < p ? (lo = mid) : (hi = mid)
+    end
+    return (lo + hi) / 2
+end
+
+function Base.rand(rng::AbstractRNG, d::_PiecewiseModified)
+    return quantile(d, rand(rng))
+end
+
+# ============================================================================
 # Shared continuous interface: derive the rest from logccdf / logpdf
 # ============================================================================
 
 const _ContinuousModified = Modified{
-    <:UnivariateDistribution{Continuous}, <:Union{Real, Function}}
+    <:UnivariateDistribution{Continuous},
+    <:Union{Real, Function, PiecewiseEffect}}
 
 @doc "
 
@@ -1044,6 +1329,23 @@ total_mass(::_DiscreteModified) = 1.0
 # Numeric cumulative-hazard path (callable/general-link effect): a clamped
 # hazard can likewise leave escaping mass, so it is searched the same way.
 total_mass(d::_NumericModified) = _defective_total_mass(d)
+
+# Piecewise-constant multiplier (#105): a TRAILING zero multiplier (as
+# `gate` builds) leaves the law defective from the last breakpoint onward,
+# so the total mass is exactly the cdf there -- no search needed, unlike the
+# general numeric path. A nonzero trailing multiplier still integrates the
+# base's own hazard indefinitely (proper in the ordinary case), so it falls
+# back to the same numeric search as any other closed-form-but-possibly-
+# defective path.
+function total_mass(d::_PiecewiseModified)
+    effect = d.effect
+    if last(effect.multipliers) == zero(eltype(effect.multipliers))
+        cap = isempty(effect.breaks) ? float(minimum(d)) :
+              float(last(effect.breaks))
+        return cdf(d, cap)
+    end
+    return _defective_total_mass(d)
+end
 
 # The limiting cdf as x grows without bound: the total probability mass a
 # clamped modified law holds. Evaluated exactly at the base's own finite

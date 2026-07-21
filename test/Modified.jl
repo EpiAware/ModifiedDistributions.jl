@@ -552,3 +552,196 @@ end
     dt = modify(trunc_base, -0.4; link = identity)
     @test total_mass(dt) ≈ cdf(dt, 10.0)
 end
+
+@testitem "piecewise_effect validation (#105)" begin
+    using ModifiedDistributions, Distributions
+
+    # One more multiplier than breaks is required.
+    @test_throws ArgumentError piecewise_effect(;
+        breaks = [1.0], multipliers = [1.0])
+    @test_throws ArgumentError piecewise_effect(;
+        breaks = [1.0, 3.0], multipliers = [1.0])
+
+    # Breakpoints must be strictly increasing.
+    @test_throws ArgumentError piecewise_effect(;
+        breaks = [1.0, 1.0], multipliers = [1.0, 2.0, 0.5])
+    @test_throws ArgumentError piecewise_effect(;
+        breaks = [3.0, 1.0], multipliers = [1.0, 2.0, 0.5])
+
+    # Multipliers must be non-negative.
+    @test_throws ArgumentError piecewise_effect(;
+        breaks = [1.0, 3.0], multipliers = [1.0, -2.0, 0.5])
+
+    pe = piecewise_effect(; breaks = [1.0, 3.0], multipliers = [1.0, 2.0, 0.5])
+    @test pe isa ModifiedDistributions.PiecewiseEffect
+    @test pe.breaks == [1.0, 3.0]
+    @test pe.multipliers == [1.0, 2.0, 0.5]
+
+    # A single global multiplier (no breaks) is a valid degenerate case.
+    pe0 = piecewise_effect(; breaks = Float64[], multipliers = [2.0])
+    @test pe0.breaks == Float64[]
+end
+
+@testitem "modify with a PiecewiseEffect only pairs with the log link (#105)" begin
+    using Distributions
+
+    base = Weibull(1.5, 2.0)
+    pe = piecewise_effect(; breaks = [1.0, 3.0], multipliers = [1.0, 2.0, 0.5])
+    d = modify(base, pe; link = ModifiedDistributions.LogLink)
+    @test d isa ModifiedDistributions.Modified
+    @test d isa UnivariateDistribution{Continuous}
+
+    @test_throws ArgumentError modify(
+        base, pe; link = ModifiedDistributions.IdentityLink)
+    @test_throws ArgumentError modify(base, pe; link = :logit)
+    @test_throws ArgumentError modify(base, pe; link = identity)
+end
+
+@testitem "piecewise-modified closed form matches a brute-force cumulative hazard (#105)" begin
+    using Distributions
+
+    base = Weibull(1.5, 2.0)
+    breaks = [1.0, 3.0]
+    multipliers = [1.0, 2.0, 0.5]
+    d = modify(base, piecewise_effect(; breaks, multipliers);
+        link = ModifiedDistributions.LogLink)
+
+    function brute_cumhazard(base, breaks, multipliers, x; n = 400_000)
+        m = minimum(base)
+        x <= m && return 0.0
+        us = range(m, x; length = n)
+        du = step(us)
+        acc = 0.0
+        for u in us
+            logS = logccdf(base, u)
+            h = isfinite(logS) ? exp(logpdf(base, u) - logS) : Inf
+            idx = searchsortedlast(breaks, u) + 1
+            acc += multipliers[idx] * h * du
+        end
+        return acc
+    end
+
+    for x in (0.5, 1.0, 1.5, 2.5, 3.0, 5.0)
+        @test -logccdf(d, x) ≈ brute_cumhazard(base, breaks, multipliers, x) atol=3e-3
+    end
+end
+
+@testitem "piecewise-modified segment boundary is right-continuous (#105)" begin
+    using Distributions
+
+    base = Weibull(1.5, 2.0)
+    # Hazard off before t=1, on (multiplier 1) from t=1 onward -- matching
+    # the issue's own `t < 1.0 ? 0.0 : log(2.0)` convention (the breakpoint
+    # value itself uses the UPPER segment's multiplier).
+    d = modify(base, piecewise_effect(; breaks = [1.0], multipliers = [0.0, 1.0]);
+        link = ModifiedDistributions.LogLink)
+
+    # Survival is continuous at the breakpoint (only the HAZARD jumps): no
+    # time has yet passed inside the new segment exactly at t=1.0.
+    @test ccdf(d, 0.999) ≈ 1.0
+    @test ccdf(d, 1.0) ≈ 1.0
+    # But the density already reflects the upper segment's multiplier there,
+    # and survival strictly decreases immediately afterward.
+    @test pdf(d, 1.0) > 0
+    @test ccdf(d, 1.0 + 1.0e-6) < 1.0
+end
+
+@testitem "piecewise-modified pdf/cdf/ccdf are consistent, monotone and proper (#105)" begin
+    using Distributions
+
+    base = Weibull(1.5, 2.0)
+    d = modify(base,
+        piecewise_effect(; breaks = [1.0, 3.0], multipliers = [1.0, 2.0, 0.5]);
+        link = ModifiedDistributions.LogLink)
+    grid = collect(0.0:0.25:8.0)
+    cdfs = cdf.(Ref(d), grid)
+    @test all(c -> -1e-10 <= c <= 1 + 1e-10, cdfs)
+    @test all(diff(cdfs) .>= -1e-10)
+    for x in grid
+        @test cdf(d, x) + ccdf(d, x) ≈ 1
+        @test pdf(d, x) >= -1e-12
+    end
+
+    # A nonzero trailing multiplier keeps the law proper (the base's own
+    # hazard integral still diverges past the last break).
+    @test total_mass(d) ≈ 1.0 atol=1e-6
+    @test !is_defective(d)
+end
+
+@testitem "piecewise-modified quantile/rand round-trip for a proper law (#105)" begin
+    using Distributions, Random
+
+    base = Weibull(1.5, 2.0)
+    d = modify(base,
+        piecewise_effect(; breaks = [1.0, 3.0], multipliers = [1.0, 2.0, 0.5]);
+        link = ModifiedDistributions.LogLink)
+    for p in (0.1, 0.25, 0.5, 0.75, 0.9)
+        @test cdf(d, quantile(d, p)) ≈ p atol=1e-6
+    end
+    rng = MersenneTwister(1)
+    draws = [rand(rng, d) for _ in 1:1000]
+    @test all(isfinite, draws)
+end
+
+@testitem "gate produces a defective law reading through total_mass/is_defective (#105)" begin
+    using Distributions
+
+    base = Weibull(1.5, 2.0)
+    g = gate(base, 1.0, 3.0)
+    @test g isa ModifiedDistributions.Modified
+    @test is_defective(g)
+
+    # Survival is one before the window opens.
+    @test ccdf(g, 0.999) ≈ 1.0
+
+    # Inside the window it matches the base's own hazard restarted from
+    # opens' cumulative hazard, the closed form the issue describes.
+    expected_mid = exp(-(-logccdf(base, 2.0) - (-logccdf(base, 1.0))))
+    @test ccdf(g, 2.0) ≈ expected_mid
+
+    # Flat thereafter: the residual "never occurred" mass.
+    residual = ccdf(g, 3.0)
+    @test ccdf(g, 10.0) ≈ residual atol=1e-10
+    @test ccdf(g, 1.0e6) ≈ residual atol=1e-8
+    @test total_mass(g) ≈ 1 - residual atol=1e-10
+
+    # A quantile beyond the total mass is undefined and throws.
+    @test_throws ArgumentError quantile(g, min(total_mass(g) + 0.05, 0.999))
+    # Below the total mass it round-trips against the same defective cdf.
+    plo = total_mass(g) / 2
+    @test cdf(g, quantile(g, plo)) ≈ plo atol=1e-6
+
+    @test_throws ArgumentError gate(base, 3.0, 1.0)
+    @test_throws ArgumentError gate(base, 1.0, 1.0)
+end
+
+@testitem "piecewise-modified ForwardDiff gradients (multipliers and breaks) (#105)" begin
+    using Distributions
+    using ForwardDiff
+
+    base = Weibull(1.5, 2.0)
+
+    g_mult = ForwardDiff.gradient(
+        m -> logpdf(
+            modify(base, piecewise_effect(; breaks = [1.0, 3.0], multipliers = m);
+                link = ModifiedDistributions.LogLink),
+            2.0),
+        [1.0, 2.0, 0.5])
+    @test all(isfinite, g_mult)
+
+    fdcheck(f, x; h = 1e-6) = (f(x + h) - f(x - h)) / (2h)
+    f_break(b) = logpdf(
+        modify(base,
+            piecewise_effect(; breaks = [b, 3.0], multipliers = [1.0, 2.0, 0.5]);
+            link = ModifiedDistributions.LogLink),
+        2.0)
+    g_ad = ForwardDiff.derivative(f_break, 1.0)
+    g_fd = fdcheck(f_break, 1.0)
+    @test isfinite(g_ad)
+    @test g_ad≈g_fd atol=1e-4 rtol=1e-3
+
+    # gate's residual mass differentiates through the window bounds too.
+    g_gate = ForwardDiff.derivative(
+        opens -> total_mass(gate(base, opens, 3.0)), 1.0)
+    @test isfinite(g_gate)
+end
