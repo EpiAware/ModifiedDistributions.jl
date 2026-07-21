@@ -798,3 +798,71 @@ end
     @test extra_leaf_params(cleaf) == (thin = (value = 0.7, support = (0.0, 1.0)),)
     @test get_dist(cleaf) == Gamma(2.0, 1.0)
 end
+
+@testitem "effective_intensity: Resolve scales by its declared branch probability (#106)" begin
+    using ModifiedDistributions, Distributions
+    using ComposedDistributions
+
+    tree = resolve(:death => (thin(Gamma(1.5, 1.0), 0.3), 0.4),
+        :disch => Gamma(2.0, 1.5))
+    @test effective_intensity(tree, (:death,)) ≈ 0.3 * 0.4
+
+    # A path naming a branch with no declared factor errors clearly.
+    @test_throws ArgumentError effective_intensity(tree, (:disch,))
+
+    # A no-event branch carries no factor either.
+    withnone = resolve(:event => (thin(Gamma(1.5, 1.0), 0.3), 0.4),
+        :none => (NoEvent(), 0.6))
+    @test effective_intensity(withnone, (:event,)) ≈ 0.3 * 0.4
+    @test_throws ArgumentError effective_intensity(withnone, (:none,))
+end
+
+@testitem "effective_intensity: Compete scales by the hazard-derived winning probability (#106)" begin
+    using ModifiedDistributions, Distributions
+    using ComposedDistributions
+    using Distributions: probs
+
+    tree = compete(
+        :death => thin(Gamma(2.0, 3.0), 0.5), :recover => Gamma(3.0, 2.0))
+    p = probs(tree)
+    @test effective_intensity(tree, (:death,)) ≈ 0.5 * p.death
+
+    # The winning-probability discount already accounts for the surviving
+    # competing cause; it is strictly below the declared factor alone (the
+    # `recover` cause has a real chance of winning first).
+    @test effective_intensity(tree, (:death,)) < 0.5
+end
+
+@testitem "effective_intensity: Sequential/Parallel/Choose pass through with no discount (#106)" begin
+    using ModifiedDistributions, Distributions
+    using ComposedDistributions
+
+    seq = sequential(:onset_admit => Gamma(2.0, 1.0),
+        :admit_death => thin(LogNormal(0.5, 0.4), 0.2))
+    @test effective_intensity(seq, (:admit_death,)) ≈ 0.2
+
+    par = parallel(:a => thin(Gamma(2.0, 1.0), 0.6), :b => Gamma(3.0, 1.0))
+    @test effective_intensity(par, (:a,)) ≈ 0.6
+
+    ch = choose(
+        :index => thin(Gamma(2.0, 1.0), 0.4), :sourced => Gamma(4.0, 1.5))
+    @test effective_intensity(ch, (:index,)) ≈ 0.4
+end
+
+@testitem "effective_intensity: nested tree multiplies reach down the path (#106)" begin
+    using ModifiedDistributions, Distributions
+    using ComposedDistributions
+
+    # A Resolve nested inside a Sequential step: reach accumulates only at the
+    # Resolve level (the Sequential step itself is always reached).
+    tree = sequential(:onset_admit => Gamma(2.0, 1.0),
+        :admit_outcome => resolve(
+            :death => (thin(Gamma(1.5, 1.0), 0.3), 0.4),
+            :disch => Gamma(2.0, 1.5)))
+    @test effective_intensity(tree, (:admit_outcome, :death)) ≈ 0.3 * 0.4
+
+    # A misnamed path step errors through the same `event` lookup `update`/
+    # `prune`/`splice` use.
+    @test_throws ArgumentError effective_intensity(
+        tree, (:admit_outcome, :nope))
+end
