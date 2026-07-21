@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Added `intensity(node)`, a plain reader of a `thin` node's declared expected-count factor (the same value `get_factor(get_op(d))` already reads, under a name of its own), and `effective_intensity(tree, path)`, the derived reader that scales it by the probability the node's active period is reached and by the fraction of its kernel mass surviving the competing components above it in a composed tree. `effective_intensity` needs ComposedDistributions.jl loaded to descend a non-empty path (via `ModifiedDistributionsComposedDistributionsExt`); an empty path reads a bare node directly. A `Resolve`/`Compete` ancestor discounts the reach by its `Distributions.probs` split (fixed for `Resolve`, hazard-derived for `Compete`); a `Sequential`/`Parallel`/`Choose` ancestor passes through with no discount (#106).
 - **Breaking:** the `ModifiedDistributionsLoweredDistributionsExt` extension and
   the `LoweredDistributions` weakdep are removed (LD#51, the #23 hub-owned
   decision). `LoweredDistributions` now hosts the `lower` bridge for the
