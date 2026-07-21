@@ -218,3 +218,88 @@ end
 function _apply_forward_ops(series, ops)
     foldl((s, op) -> _apply_op(op, s), ops; init = series)
 end
+
+# ============================================================================
+# Declared and effective intensity (#106)
+# ============================================================================
+#
+# A `thin(d, p)` node's factor `p` already reads through `get_factor(get_op(d))`
+# (#61); `intensity` is a plain reader of the same declared factor under its
+# own name, so "declared" is a first-class idea distinguishable from the
+# derived `effective_intensity` below. Reuses the existing `ThinOp` factor
+# rather than adding a second, parallel intensity concept on tree nodes.
+
+@doc "
+
+Return the declared intensity (expected-count factor) a [`thin`](@ref) node
+carries.
+
+The same factor [`get_factor`](@ref)`(`[`get_op`](@ref)`(d))` reads, under a
+name of its own so \"declared\" is a first-class idea, distinguishable from
+[`effective_intensity`](@ref)'s derived quantity. Errors clearly for any node
+with no declared factor (a plain distribution, or a [`Transformed`](@ref)
+carrying a [`CumulativeOp`](@ref) or a bare callable op).
+
+# Arguments
+- `d`: a [`thin`](@ref) node (a [`Transformed`](@ref) carrying a
+  [`ThinOp`](@ref)).
+
+# Examples
+```@example
+using ModifiedDistributions, Distributions
+
+node = thin(Gamma(2.0, 1.0), 0.3)
+intensity(node)
+```
+
+# See also
+- [`effective_intensity`](@ref): the same factor scaled by tree context.
+"
+intensity(d::Transformed) = _node_intensity(get_op(d))
+_node_intensity(op::ThinOp) = get_factor(op)
+_node_intensity(op) = _no_intensity_error()
+
+intensity(d) = _no_intensity_error()
+
+function _no_intensity_error()
+    throw(ArgumentError(
+        "no declared intensity: only a `thin(d, p)` node (a `Transformed` " *
+        "carrying a `ThinOp`) has a declared factor"))
+end
+
+@doc "
+
+Return the effective intensity of a declared factor within a composed tree.
+
+The node at `path`'s declared [`intensity`](@ref), scaled by the probability
+its active period is reached and by the fraction of its kernel mass
+surviving the competing components above it in the tree. Equivalent to
+hand-integrating the component-resolved sub-density, but read straight off
+the tree. Needs ComposedDistributions.jl loaded to descend a non-empty
+`path`; an empty `path` reads `tree` itself, needing no tree machinery.
+
+# Arguments
+- `tree`: the composed tree (or a bare node) to read.
+- `path`: a tuple of edge names, the same form [`update`](@ref)/
+  [`prune`](@ref)/[`splice`](@ref) accept, from `tree` down to the node whose
+  factor to read.
+
+# Examples
+```@example
+using ModifiedDistributions, Distributions
+
+node = thin(Gamma(2.0, 1.0), 0.3)
+effective_intensity(node, ())
+```
+
+# See also
+- [`intensity`](@ref): the plain declared-factor reader (no tree context).
+"
+function effective_intensity(tree, path::Tuple)
+    isempty(path) && return intensity(tree)
+    throw(ArgumentError(
+        "effective_intensity(tree, path) with a non-empty path needs a " *
+        "composed tree to descend; load ComposedDistributions.jl (`using " *
+        "ComposedDistributions`), which teaches this function to walk a " *
+        "Sequential/Parallel/Resolve/Compete/Choose tree"))
+end

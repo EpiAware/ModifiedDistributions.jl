@@ -210,3 +210,33 @@ end
     @test nested isa ModifiedDistributions.Modified
     @test value_support(typeof(nested)) === Continuous
 end
+
+@testitem "intensity reads a thin node's declared factor (#106)" begin
+    using ModifiedDistributions, Distributions
+
+    node = thin(Gamma(2.0, 1.0), 0.3)
+    @test intensity(node) == 0.3
+    @test intensity(node) ===
+          ModifiedDistributions.get_factor(ModifiedDistributions.get_op(node))
+
+    # A node with no factor errors clearly rather than returning a default.
+    @test_throws ArgumentError intensity(Gamma(2.0, 1.0))
+
+    # A Transformed carrying a non-ThinOp (cumulative / a bare callable) has
+    # no declared factor either.
+    @test_throws ArgumentError intensity(cumulative(Gamma(2.0, 1.0)))
+    @test_throws ArgumentError intensity(
+        series_transform(Gamma(2.0, 1.0), s -> 0.5 .* s))
+end
+
+@testitem "effective_intensity base case: an empty path reads the node itself (#106)" begin
+    using ModifiedDistributions, Distributions
+
+    node = thin(Gamma(2.0, 1.0), 0.3)
+    @test effective_intensity(node, ()) == intensity(node)
+    @test effective_intensity(node, ()) == 0.3
+
+    # A non-empty path needs a composed tree (ComposedDistributions loaded);
+    # without it this errors clearly rather than silently misreading.
+    @test_throws ArgumentError effective_intensity(node, (:death,))
+end

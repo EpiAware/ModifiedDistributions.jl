@@ -53,10 +53,20 @@
 # type-parameter index, a fixed extra-names tuple) instead, populated at
 # `__init__` time -- before any code outside this package could construct one
 # of these leaf types.
+#
+# 4. `effective_intensity`'s tree walk (#106): a `thin` node's declared factor
+# (read by ModifiedDistributions' own `intensity`) scaled by the reach
+# probability of the tree path leading to it. Function owner is
+# ModifiedDistributions (`effective_intensity`'s base case lives in
+# Transformed.jl); this extension adds the recursive-descent methods over
+# CD's composer types, reading the reach probability through
+# `Distributions.probs` (a `Resolve`/`Compete` method CD already owns) rather
+# than a new parallel probability concept.
 module ModifiedDistributionsComposedDistributionsExt
 
 import ModifiedDistributions: affine, weight, thin, cumulative,
-                              series_transform, modify, get_dist
+                              series_transform, modify, get_dist,
+                              effective_intensity, intensity
 using ModifiedDistributions: Affine, Weighted, Transformed, Modified, ThinOp,
                              get_scale, get_shift, get_weight, get_effect,
                              get_link, get_op, get_factor
@@ -71,7 +81,10 @@ using ComposedDistributions: Sequential, Parallel, observed_distribution,
 # branch, and the `parallel` constructor reassembles a `Parallel` from
 # `name => branch` pairs, preserving the branch names and order.
 using ComposedDistributions: parallel, component_names, event
-using Distributions: mean, var
+# The one_of abstract supertype and the data-selected disjunction, needed by
+# `effective_intensity`'s tree walk (#106).
+using ComposedDistributions: AbstractOneOf, Choose
+using Distributions: mean, var, probs
 
 # === Direction 1: a modifier applied to a composed tree =====================
 
@@ -309,6 +322,39 @@ has_varying(d::Affine) = has_varying(get_dist(d))
 has_varying(d::Weighted) = has_varying(get_dist(d))
 has_varying(d::Transformed) = has_varying(get_dist(d))
 has_varying(d::Modified) = has_varying(get_dist(d))
+
+# === Direction 3: effective_intensity's tree walk (#106) ===================
+#
+# `effective_intensity(tree, path)` descends `path` one name per step,
+# recursing into the named child and multiplying in the reach probability of
+# taking that branch. An `AbstractOneOf` (`Resolve`/`Compete`) ancestor
+# multiplies in `Distributions.probs(tree)[name]`: `Resolve`'s declared
+# branch probability, or `Compete`'s hazard-DERIVED per-cause winning
+# probability -- already the fraction of the node's kernel mass surviving
+# the competing causes above it, since that is exactly what the racing-hazard
+# split integrates out. A `Sequential`/`Parallel` ancestor contributes no
+# discount (every child always executes); neither does a `Choose` (the active
+# alternative is picked by DATA, not a modelled probability). Recursion
+# bottoms out at `ModifiedDistributions`' own base case (Transformed.jl) once
+# the path is exhausted (`intensity(tree)` at an empty path).
+function effective_intensity(
+        tree::Union{Sequential, Parallel, Choose}, path::Tuple)
+    isempty(path) && return intensity(tree)
+    name = first(path)
+    return effective_intensity(event(tree, name), Base.tail(path))
+end
+
+function effective_intensity(tree::AbstractOneOf, path::Tuple)
+    isempty(path) && return intensity(tree)
+    name = first(path)
+    # `event` validates `name` (a clear ArgumentError naming the valid
+    # children for an unknown branch) before the reach discount is read, so
+    # a bad path name fails the same way it does for the pass-through
+    # composers rather than a raw NamedTuple field error from `probs`.
+    child = event(tree, name)
+    branch_reach = probs(tree)[name]
+    return branch_reach * effective_intensity(child, Base.tail(path))
+end
 
 # --- register with CD's generated-codec type-level registry (#189) ---------
 #
