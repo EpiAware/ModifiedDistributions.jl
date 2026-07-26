@@ -21,9 +21,18 @@ ModifiedDistributions = "664e6f8c-d74f-44d3-9f37-f82699103046"
 [sources]
 ModifiedDistributions = {path = "../.."}
 # Unregistered; pinned by git so the fixture package resolves standalone.
-# During the AD suite the active project is `test/ad`, whose own direct
-# ConvolvedDistributions pin governs resolution (`[sources]` entries only
-# apply to the active project's direct dependencies).
+# ConvolvedDistributions is deliberately absent here: it resolves from the
+# registry (0.2.x) pending the discrete-support design ruling (Convolved#85;
+# see ModifiedDistributions#92), matching `test/ad`, `benchmark` and `docs`.
+# This package is a workspace path dependency of `docs`, so a `rev = "main"`
+# pin here reaches the shared workspace manifest and pulls ConvolvedDistributions
+# 1.0, which dropped `discretise_pmf` — the function
+# ModifiedDistributionsConvolvedDistributionsExt discretises a continuous delay
+# with — against the root `ConvolvedDistributions = "0.2"` compat bound.
 ComposedDistributions = {url = "https://github.com/EpiAware/ComposedDistributions.jl", rev = "main"}
-ConvolvedDistributions = {url = "https://github.com/EpiAware/ConvolvedDistributions.jl", rev = "main"}
 EpiAwareADTools = {url = "https://github.com/EpiAware/EpiAwareADTools.jl", rev = "main"}
+
+[compat]
+# Mirrors the root `[compat]` bound: the extension this fixture registry
+# exercises is written against ConvolvedDistributions 0.2's API.
+ConvolvedDistributions = "0.2"
