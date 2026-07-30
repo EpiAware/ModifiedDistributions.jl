@@ -618,12 +618,12 @@ end
     @test g ≈ fd rtol = 1e-4
 end
 
-@testitem "Modified extension: convolve_series with an affine chain step" begin
+@testitem "Modified extension: convolve_series with an affine chain step" setup=[DelayMasses] begin
     using Distributions
     using ComposedDistributions
     # CD#228 (open): ComposedDistributions no longer re-exports
     # ConvolvedDistributions' convolution surface, so reach it directly.
-    using ConvolvedDistributions: convolve_series, discretise_pmf, convolved
+    using ConvolvedDistributions: convolve_series, convolved
     using ModifiedDistributions: affine
 
     aff = affine(Gamma(2.0, 1.0); scale = 2.0, shift = 1.0)
@@ -636,11 +636,10 @@ end
     # caller's behalf, so the chain path discretises explicitly, exactly like
     # the hand-built equivalent.
     maxlag = length(series) - 1
-    out = convolve_series(discretise_pmf(observed_distribution(chain), maxlag),
-        series)
-    @test out ==
-          convolve_series(discretise_pmf(convolved(aff, Gamma(3.0, 1.0)), maxlag),
-        series)
+    out = convolve_series(
+        discretised_masses(observed_distribution(chain), maxlag), series)
+    @test out == convolve_series(
+        discretised_masses(convolved(aff, Gamma(3.0, 1.0)), maxlag), series)
     @test length(out) == length(series)
 end
 
@@ -708,13 +707,12 @@ end
     @test !has_varying(instantiate(chain, ctx))
 end
 
-@testitem "Modified extension: modified leaves drive convolve_series (#117)" begin
+@testitem "Modified extension: modified leaves drive convolve_series (#117)" setup=[DelayMasses] begin
     using Distributions
     using ComposedDistributions
     # CD#228 (open): ComposedDistributions no longer re-exports
     # ConvolvedDistributions' convolution surface, so reach it directly.
-    using ConvolvedDistributions: convolve_series, discretise_pmf, convolved,
-                                  Convolved
+    using ConvolvedDistributions: convolve_series, convolved, Convolved
     using ModifiedDistributions: affine, weight, thin
 
     # ModifiedDistributions#40: a Modified-wrapped chain step must participate
@@ -744,10 +742,9 @@ end
         # The convolved output matches discretising the observed total by
         # hand, and equals the direct Convolved of the wrapped leaf and the
         # tail.
-        out = convolve_series(discretise_pmf(od, maxlag), series)
-        @test out ==
-              convolve_series(discretise_pmf(convolved(mod, tail), maxlag),
-            series)
+        out = convolve_series(discretised_masses(od, maxlag), series)
+        @test out == convolve_series(
+            discretised_masses(convolved(mod, tail), maxlag), series)
         @test length(out) == length(series)
     end
 end

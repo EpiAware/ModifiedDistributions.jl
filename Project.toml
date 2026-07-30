@@ -29,7 +29,7 @@ ModifiedDistributionsQuadGKExt = "QuadGK"
 
 [compat]
 ComposedDistributions = "0.1"
-ConvolvedDistributions = "0.2"
+ConvolvedDistributions = "0.2, 0.3"
 Distributions = "0.25"
 DocStringExtensions = "0.9"
 EpiAwareADTools = "0.1"

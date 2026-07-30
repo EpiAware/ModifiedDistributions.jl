@@ -1,5 +1,10 @@
 ## Unreleased
 
+- **Breaking (upstream-driven):** adopt ConvolvedDistributions 0.3, which removed `discretise_pmf` (CD#68) on the grounds that the censoring scheme behind a discretisation belongs to the caller.
+  The ConvolvedDistributions extension now builds the interval-censored-secondary masses itself, with the removed function's arithmetic, so the modifier `convolve_series` counts are unchanged.
+  Compat is `ConvolvedDistributions = "0.2, 0.3"`, lifting the cap that held downstream environments on 0.2 (#125).
+  Anyone who discretised a bare continuous delay through `discretise_pmf` now builds the masses, e.g. `convolve_series([cdf(d, k + 1) - cdf(d, k) for k in 0:maxlag], series)`, or takes double-interval-censored masses from CensoredDistributions.jl when the primary event is known only to the day.
+
 - **Breaking:** the `ModifiedDistributionsLoweredDistributionsExt` extension and
   the `LoweredDistributions` weakdep are removed (LD#51, the #23 hub-owned
   decision). `LoweredDistributions` now hosts the `lower` bridge for the
