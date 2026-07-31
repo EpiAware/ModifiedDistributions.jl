@@ -1,3 +1,15 @@
+# ConvolvedDistributions 0.3 removed `discretise_pmf` (CD#68), so the
+# interval-censored-secondary masses the extension convolves are now built in
+# the extension. Baselines here read that same helper rather than restating
+# the scheme, which keeps the `==` comparisons exact.
+@testsnippet DelayMasses begin
+    function discretised_masses(delay, maxlag; interval = 1)
+        ext = Base.get_extension(ModifiedDistributions,
+            :ModifiedDistributionsConvolvedDistributionsExt)
+        return ext._discretised_masses(delay, maxlag, interval)
+    end
+end
+
 @testitem "Convolved extension: loads and verbs need no new methods" begin
     using Distributions
     using ConvolvedDistributions
@@ -30,15 +42,16 @@
     end
 end
 
-@testitem "Convolved extension: series handshake peels forward ops" begin
+@testitem "Convolved extension: series handshake peels forward ops" setup=[DelayMasses] begin
     using Distributions
     using ConvolvedDistributions
 
     delay = Gamma(2.0, 1.0)
     series = [0.0, 5.0, 12.0, 20.0, 15.0, 8.0, 3.0]
-    # ConvolvedDistributions 0.2 is discrete-only, so a bare continuous delay
-    # is discretised explicitly; the modifier convenience does this internally.
-    baseline = convolve_series(discretise_pmf(delay, length(series) - 1), series)
+    # ConvolvedDistributions is discrete-only, so a bare continuous delay is
+    # discretised explicitly; the modifier convenience does this internally.
+    baseline = convolve_series(
+        discretised_masses(delay, length(series) - 1), series)
 
     # thin: the factor multiplies the unthinned baseline counts.
     thinned = convolve_series(thin(delay, 0.3), series)
@@ -61,16 +74,15 @@ end
     # discretised PMF drives the counts, then the thin factor applies.
     total = convolved(Gamma(2.0, 1.0), LogNormal(0.5, 0.4))
     total_counts = convolve_series(
-        discretise_pmf(total, length(series) - 1), series)
+        discretised_masses(total, length(series) - 1), series)
     @test convolve_series(thin(total, 0.3), series) ≈
           0.3 .* total_counts
 
-    # The interval kwarg flows through to discretise_pmf: a non-unit width
-    # discretises the inner delay on that grid (ConvolvedDistributions 0.2
-    # removed the unit-only restriction rather than rejecting it).
+    # The interval kwarg sets the discretisation grid width: a non-unit
+    # width discretises the inner delay on that grid.
     @test convolve_series(thin(delay, 0.3), series; interval = 2) ≈
           0.3 .* convolve_series(
-        discretise_pmf(delay, length(series) - 1; interval = 2), series)
+        discretised_masses(delay, length(series) - 1; interval = 2), series)
 end
 
 @testitem "Convolved extension: modifiers as convolution components" begin
@@ -267,7 +279,7 @@ end
     @test logpdf(d, xs) ≈ map(x -> logpdf(d, x), xs) rtol = 1e-3
 end
 
-@testitem "buried forward ops are rejected, outermost ops work" begin
+@testitem "buried forward ops are rejected, outermost ops work" setup=[DelayMasses] begin
     using Distributions
     using ConvolvedDistributions
 
@@ -285,7 +297,8 @@ end
     # Outermost ops peel correctly even over a modified inner delay: the
     # weight only touches logpdf, so the convolved counts match the
     # unweighted inner delay's, accumulated.
-    baseline = convolve_series(discretise_pmf(delay, length(series) - 1), series)
+    baseline = convolve_series(
+        discretised_masses(delay, length(series) - 1), series)
     counts = convolve_series(cumulative(weight(delay, 3.0)), series)
     (accumulated = counts, expected = cumsum(baseline))
     @test counts ≈ cumsum(baseline)

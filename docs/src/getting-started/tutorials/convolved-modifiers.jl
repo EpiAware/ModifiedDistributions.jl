@@ -59,15 +59,22 @@ total = convolved(onset, report)
 (total_mean = mean(total), stage_sum = mean(onset) + mean(report))
 
 # A continuous total delay carries no mass on the integer day grid until it
-# is discretised, and ConvolvedDistributions 0.2 leaves that explicit
-# modelling choice to the caller: `discretise_pmf` turns the total into a
-# daily PMF, which `convolve_series` then convolves with the series.
+# is discretised, and ConvolvedDistributions leaves that modelling choice to
+# the caller.
+# Differencing the total's CDF over the day grid gives daily masses (the
+# secondary event binned by day, the primary exact), which
+# `convolve_series` convolves with the series.
 # Feeding it an expected-infections curve gives the expected reported
 # counts each day.
+# A primary event known only to the day needs double-interval-censored
+# masses instead, which is
+# [CensoredDistributions.jl](https://github.com/EpiAware/CensoredDistributions.jl)'s
+# job.
 
 infections = [0.0, 10.0, 40.0, 90.0, 120.0, 100.0, 60.0, 30.0, 12.0, 4.0]
+daily_masses(d, maxlag) = [cdf(d, k + 1) - cdf(d, k) for k in 0:maxlag]
 reported = convolve_series(
-    discretise_pmf(total, length(infections) - 1), infections)
+    daily_masses(total, length(infections) - 1), infections)
 reported
 
 # ## Thinning the convolved counts (ascertainment)
@@ -175,11 +182,11 @@ chain_ascertained = convolve_series(thin(chain, 0.3), infections)
 
 # The bare collapsed total is a continuous distribution, so a direct
 # `convolve_series(chain_total, infections)` would (rightly) refuse to
-# discretise silently; the modifier convenience discretises for you, and an
-# explicit `discretise_pmf` reproduces the same baseline.
+# discretise silently; the modifier convenience discretises for you, and the
+# explicit CDF differences reproduce the same baseline.
 
 chain_baseline = convolve_series(
-    discretise_pmf(chain_total, length(infections) - 1), infections)
+    daily_masses(chain_total, length(infections) - 1), infections)
 (via_modifier = convolve_series(thin(chain, 1.0), infections)[end],
     via_discretise = chain_baseline[end])
 

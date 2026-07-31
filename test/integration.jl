@@ -8,11 +8,10 @@
 # the inner continuous total and applies the modifier's op. These testitems
 # are the durable evidence that the full stack works end to end.
 
-@testitem "Integration: forward transforms on a composed chain convolve" begin
+@testitem "Integration: forward transforms on a composed chain convolve" setup=[DelayMasses] begin
     using Distributions
     using ComposedDistributions
     using ConvolvedDistributions
-    using ConvolvedDistributions: discretise_pmf
 
     # A two-step delay chain (onset->admit->death) collapses to one observed
     # total delay; discretising it and convolving the incidence series gives
@@ -22,7 +21,7 @@
     observed = observed_distribution(seq)
     series = [0.0, 5.0, 12.0, 20.0, 15.0, 8.0, 3.0]
     baseline = convolve_series(
-        discretise_pmf(observed, length(series) - 1), series)
+        discretised_masses(observed, length(series) - 1), series)
 
     # thin(seq, p): the ascertainment factor multiplies the baseline counts.
     # The chain collapses to its observed total, thin wraps that total, and
@@ -43,11 +42,10 @@
     @test nested ≈ 0.3 .* cumsum(baseline)
 end
 
-@testitem "Integration: affine and modify on a composed chain convolve" begin
+@testitem "Integration: affine and modify on a composed chain convolve" setup=[DelayMasses] begin
     using Distributions
     using ComposedDistributions
     using ConvolvedDistributions
-    using ConvolvedDistributions: discretise_pmf
 
     seq = sequential(:onset_admit => Gamma(2.0, 1.0),
         :admit_death => LogNormal(0.5, 0.4))
@@ -59,29 +57,28 @@ end
     # directly, so the modifier convenience discretises the same object.
     scaled = convolve_series(affine(seq; scale = 2.0), series)
     expected_affine = convolve_series(
-        discretise_pmf(affine(observed; scale = 2.0), length(series) - 1),
+        discretised_masses(affine(observed; scale = 2.0), length(series) - 1),
         series)
     @test scaled ≈ expected_affine
     # Scaling the delay pushes mass later, so the counts differ from a plain
     # convolution of the unscaled total.
     plain = convolve_series(
-        discretise_pmf(observed, length(series) - 1), series)
+        discretised_masses(observed, length(series) - 1), series)
     @test !isapprox(scaled, plain)
 
     # modify(seq, effect): a hazard modification of the observed total,
     # matching the discretised modified total convolved directly.
     modified = convolve_series(modify(seq, -log(2.0)), series)
     expected_modify = convolve_series(
-        discretise_pmf(modify(observed, -log(2.0)), length(series) - 1),
+        discretised_masses(modify(observed, -log(2.0)), length(series) - 1),
         series)
     @test modified ≈ expected_modify
 end
 
-@testitem "Integration: bare composed total needs explicit discretisation" begin
+@testitem "Integration: bare composed total needs explicit discretisation" setup=[DelayMasses] begin
     using Distributions
     using ComposedDistributions
     using ConvolvedDistributions
-    using ConvolvedDistributions: discretise_pmf
 
     # A bare continuous observed total is NOT a modifier wrapper, so
     # convolve_series routes to ConvolvedDistributions' own discrete-only
@@ -98,16 +95,15 @@ end
     # The explicit route works and equals the modifier convenience path with
     # an identity op.
     baseline = convolve_series(
-        discretise_pmf(observed, length(series) - 1), series)
+        discretised_masses(observed, length(series) - 1), series)
     via_modifier = convolve_series(thin(seq, 1.0), series)
     @test via_modifier ≈ baseline
 end
 
-@testitem "Integration: Parallel convolves branch by branch" begin
+@testitem "Integration: Parallel convolves branch by branch" setup=[DelayMasses] begin
     using Distributions
     using ComposedDistributions
     using ConvolvedDistributions
-    using ConvolvedDistributions: discretise_pmf
 
     # A Parallel has several independent endpoints and no single observed
     # delay, so convolve_series on the whole Parallel is refused with
@@ -122,9 +118,9 @@ end
     # thinned delay, giving 0.3 times its own baseline counts.
     tp = thin(par, 0.3)
     admit_baseline = convolve_series(
-        discretise_pmf(Gamma(2.0, 1.0), length(series) - 1), series)
+        discretised_masses(Gamma(2.0, 1.0), length(series) - 1), series)
     notif_baseline = convolve_series(
-        discretise_pmf(LogNormal(0.5, 0.4), length(series) - 1), series)
+        discretised_masses(LogNormal(0.5, 0.4), length(series) - 1), series)
     @test convolve_series(event(tp, :admit), series) ≈ 0.3 .* admit_baseline
     @test convolve_series(event(tp, :notif), series) ≈ 0.3 .* notif_baseline
 end
