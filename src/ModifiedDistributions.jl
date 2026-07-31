@@ -58,6 +58,11 @@ export weight
 export series_transform, thin, cumulative
 # `modify`: a hazard modification through a link (proportional or additive).
 export modify
+# The declared/effective intensity readers over a `thin` node's factor
+# (#106): `intensity` reads it plain; `effective_intensity` scales it by a
+# composed tree's reach and surviving-competitor mass (needs
+# ComposedDistributions.jl loaded to descend a non-empty path).
+export intensity, effective_intensity
 # The generic unwrap protocol owned by this package.
 export get_dist, get_dist_recursive
 
