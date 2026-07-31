@@ -25,12 +25,6 @@ TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [sources]
-# This package's own ModifiedDistributionsComposedDistributionsExt supplies the
-# leaf protocol for the modifier leaves (#170 step 2); CD's reverse extension is
-# gone. Pinned by git until ComposedDistributions registers.
-#
-# CD PR #216 (ComposedDistributions#189) merged `register_leaf_wrapper!` to
-# `main`, so this __init__ registration now resolves against `main` again.
 ComposedDistributions = {rev = "main", url = "https://github.com/EpiAware/ComposedDistributions.jl"}
 EpiAwareADTools = {rev = "main", url = "https://github.com/EpiAware/EpiAwareADTools.jl"}
 EpiAwarePackageTools = {rev = "main", url = "https://github.com/EpiAware/EpiAwarePackageTools.jl"}
