@@ -25,15 +25,7 @@ ModifiedDistributions = "664e6f8c-d74f-44d3-9f37-f82699103046"
 [sources]
 ADFixtures = {path = "../test/ADFixtures"}
 ModifiedDistributions = {path = ".."}
-# Until EpiAwarePackageTools is registered, it is pinned by git so
-# the env resolves out of the box. Switch to a local path to
-# develop the kit alongside this package.
 EpiAwarePackageTools = {url = "https://github.com/EpiAware/EpiAwarePackageTools.jl", rev = "main"}
-# ComposedDistributions (the ModifiedDistributionsComposedDistributionsExt
-# trigger, exercised by the Sequential AD scenario) is unregistered, so it
-# is pinned by git. ConvolvedDistributions resolves from the registry
-# (0.2.0) pending the discrete-support design ruling (Convolved#85); see
-# ModifiedDistributions#92.
 ComposedDistributions = {url = "https://github.com/EpiAware/ComposedDistributions.jl", rev = "main"}
 EpiAwareADTools = {url = "https://github.com/EpiAware/EpiAwareADTools.jl", rev = "main"}
 
