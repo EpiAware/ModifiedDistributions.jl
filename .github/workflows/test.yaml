@@ -14,13 +14,13 @@ concurrency:
 
 jobs:
   test:
-    uses: EpiAware/.github/.github/workflows/tests.yml@4ade02869137af2a1799c704df8a0256ef5b5de6
+    uses: EpiAware/.github/.github/workflows/tests.yml@383486033b4ae93561695411c9033f204df75d12
     with:
       julia_versions: '["1", "pre"]'
     secrets: inherit  # pragma: allowlist secret
 
   downgrade-compat:
-    uses: EpiAware/.github/.github/workflows/downgrade.yml@4ade02869137af2a1799c704df8a0256ef5b5de6
+    uses: EpiAware/.github/.github/workflows/downgrade.yml@383486033b4ae93561695411c9033f204df75d12
     # '1' not '1.11': on a Dependabot-authored PR, julia-runtest force-latests
     # every un-floored compat entry (downgrade.yml's `mode: deps` only floors
     # the root Project.toml, not test/Project.toml, where JET lives). JET's
