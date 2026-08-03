@@ -15,13 +15,17 @@ using ModifiedDistributions, Distributions
 
 The composed-chain and convolution tutorials additionally use
 [ComposedDistributions.jl](https://github.com/EpiAware/ComposedDistributions.jl) and
-[ConvolvedDistributions.jl](https://github.com/EpiAware/ConvolvedDistributions.jl).
-Until those packages reach the General registry, install them by URL:
+[ConvolvedDistributions.jl](https://github.com/EpiAware/ConvolvedDistributions.jl),
+both of which are in the General Registry:
 
 ```julia
 using Pkg
-Pkg.add(url = "https://github.com/EpiAware/ConvolvedDistributions.jl")
-Pkg.add(url = "https://github.com/EpiAware/ComposedDistributions.jl")
+Pkg.add("ConvolvedDistributions")
+Pkg.add("ComposedDistributions")
 ```
+
+Loading either alongside this package activates the matching extension, so
+the modifier verbs work across a composed chain or a convolved series with no
+further setup.
 
 The [Getting started](@ref getting-started) overview tours each modifier with worked examples.

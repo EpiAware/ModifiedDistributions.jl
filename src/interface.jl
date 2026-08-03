@@ -27,9 +27,11 @@ Required methods a concrete subtype implements (the leaf interface):
   `minimum` / `maximum` / `insupport` / `params`), forwarded or specialised;
 - optionally `Base.show`; the default below prints `Name(inner)`.
 
-The `free_leaf` / `rewrap_leaf` round-trip verbs are owned by
-ComposedDistributions.jl and live in its package extension, so they are not
-part of this package's contract.
+The `free_leaf` / `rewrap_leaf` round-trip verbs are ComposedDistributions.jl's
+generics, so they are not part of this package's contract. Their methods for
+modifier leaves live in this package's own
+`ModifiedDistributionsComposedDistributionsExt`, which loads automatically when
+ComposedDistributions.jl is present.
 
 Verify a subtype with
 `ModifiedDistributions.TestUtils.test_modified_interface`.
