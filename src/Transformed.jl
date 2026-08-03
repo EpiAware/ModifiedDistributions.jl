@@ -278,6 +278,14 @@ hand-integrating the component-resolved sub-density, but read straight off
 the tree. Needs ComposedDistributions.jl loaded to descend a non-empty
 `path`; an empty `path` reads `tree` itself, needing no tree machinery.
 
+A `Resolve`/`Compete` ancestor discounts the reach by its branch
+probability. A `Sequential`/`Parallel`/`Choose` ancestor passes straight
+through with no discount. Every `Sequential`/`Parallel` child always
+executes, and a `Choose` alternative is picked by the data rather than a
+modelled probability. Do not sum `effective_intensity` across a `Choose`
+node's alternatives to get a combined intensity: only one alternative
+applies per record, so a caller summing over them double-counts.
+
 # Arguments
 - `tree`: the composed tree (or a bare node) to read.
 - `path`: a tuple of edge names, the same form [`update`](@ref)/
