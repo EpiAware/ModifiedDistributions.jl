@@ -11,12 +11,16 @@
 #
 # Light tutorials emit `@example` blocks that Documenter runs in-process; keep
 # cheap tutorials here.
+# `lowering.jl` is written and kept on disk but not built: it needs
+# LoweredDistributions.jl, which is not yet registered, and the docs
+# environment carries no git `[sources]` pins ahead of this package's own
+# registration. Re-add it here and in `pages.jl` once LoweredDistributions
+# registers.
 const LIGHT_TUTORIALS = [
     "weighted-likelihoods.jl",
     "modifier-pipeline.jl",
     "composed-chains.jl",
-    "convolved-modifiers.jl",
-    "lowering.jl"
+    "convolved-modifiers.jl"
 ]
 
 # Heavy tutorials (live MCMC fits, multi-backend AD, plotting) are each
