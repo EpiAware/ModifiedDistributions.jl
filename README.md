@@ -83,9 +83,9 @@ Likewise `weight` replaces ad hoc `n * logpdf(d, x)` terms in model code with a 
 
 ## Related packages
 
-- [ComposedDistributions.jl](https://composeddistributions.epiaware.org/dev/) composes distributions into event-tree chains; a package extension here lets the modifier verbs apply across a chain's observed total, and ComposedDistributions.jl's own leaf-protocol support lets a modified leaf compose inside a chain.
+- [ComposedDistributions.jl](https://composeddistributions.epiaware.org/dev/) composes distributions into event-tree chains; a package extension here lets the modifier verbs apply across a chain's observed total, and hosts the leaf protocol that lets a modified leaf compose inside a chain.
 - [ConvolvedDistributions.jl](https://convolveddistributions.epiaware.org/dev/) sums independent delays and convolves count series; a package extension applies `thin`/`cumulative` to the convolved counts and lets modified distributions serve as convolution components.
-- [LoweredDistributions.jl](https://lowereddistributions.epiaware.org/dev/) turns a distribution into a backend-agnostic dynamical-systems representation; a package extension here lowers the modifiers that carry dynamics (an `affine` rescale, a `modify` hazard change on an `Exponential`) and refuses the observation-only ones (a shift, a `weight`, a forward transform) rather than approximating them.
+- [LoweredDistributions.jl](https://lowereddistributions.epiaware.org/dev/) turns a distribution into a backend-agnostic dynamical-systems representation; its own package extension lowers the modifiers that carry dynamics (an `affine` rescale, a `modify` hazard change on an `Exponential`) and refuses the observation-only ones (a shift, a `weight`, a forward transform) rather than approximating them.
 - [CensoredDistributions.jl](https://censoreddistributions.epiaware.org/stable/) builds primary-event and interval censoring on distributions, including ones already modified by this package.
 - [DistributionsInference.jl](https://github.com/EpiAware/DistributionsInference.jl) is the emerging home for probabilistic-programming integrations (Turing.jl, DynamicPPL, Bijectors) that a modified or weighted distribution plugs into.
 
@@ -111,17 +111,10 @@ We welcome contributions and new contributors! This package follows [ColPrac](ht
 
 If you would like to support ModifiedDistributions, please star the repository — such metrics help secure future funding.
 
-If you use ModifiedDistributions in your work, please cite it (the DOI is a placeholder until the first Zenodo release):
-
-```bibtex
-@software{ModifiedDistributions_jl,
-  author       = {Sam Abbott and EpiAware contributors},
-  title        = {ModifiedDistributions.jl},
-  year         = {2026},
-  doi          = {10.5281/zenodo.XXXXXXX},
-  url          = {https://github.com/EpiAware/ModifiedDistributions.jl}
-}
-```
+If you use ModifiedDistributions in your work, please cite it.
+Citation metadata lives in [`CITATION.cff`](https://github.com/EpiAware/ModifiedDistributions.jl/blob/main/CITATION.cff),
+which GitHub renders as a "Cite this repository" button on the repository page.
+A version-specific DOI is minted with the first Zenodo release.
 
 ## Code of conduct
 
