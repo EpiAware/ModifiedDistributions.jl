@@ -23,6 +23,9 @@ ModifiedDistributions = "664e6f8c-d74f-44d3-9f37-f82699103046"
 [sources]
 ADFixtures = {path = "../ADFixtures"}
 ModifiedDistributions = {path = "../.."}
-EpiAwarePackageTools = {url = "https://github.com/EpiAware/EpiAwarePackageTools.jl", rev = "main"}
-ComposedDistributions = {url = "https://github.com/EpiAware/ComposedDistributions.jl", rev = "main"}
-EpiAwareADTools = {url = "https://github.com/EpiAware/EpiAwareADTools.jl", rev = "main"}
+
+[compat]
+ComposedDistributions = "0.1"
+ConvolvedDistributions = "0.2, 0.3"
+EpiAwareADTools = "0.1"
+EpiAwarePackageTools = "0.2"
