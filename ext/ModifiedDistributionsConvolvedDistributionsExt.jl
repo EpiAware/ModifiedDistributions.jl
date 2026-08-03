@@ -41,7 +41,6 @@ import ConvolvedDistributions: convolve_series
 # window.
 import EpiAwareADTools: primal_distribution, cdf_ad_safe, ccdf_ad_safe,
                         logcdf_ad_safe, logccdf_ad_safe
-using ConvolvedDistributions: discretise_pmf
 using EpiAwareADTools: primal
 using ModifiedDistributions: AbstractModifiedDistribution, Affine, Modified,
                              Transformed, Weighted, get_dist, get_scale,
@@ -55,47 +54,78 @@ using Distributions: Distributions, pdf, cdf
 # --- 1. The series handshake -----------------------------------------------
 
 # Convolving a forward-transformed delay with a numeric series: peel the
-# forward ops off the wrapper, convolve the inner delay's discretised PMF
-# with the series, then apply the ops (innermost first) to the resulting
-# counts. ConvolvedDistributions 0.2 makes the bare-distribution
-# `convolve_series` discrete-only (discretising a continuous delay is an
-# explicit modelling choice it will not make silently), so the inner
-# continuous delay is discretised here with the interval-censored-secondary
-# scheme (`discretise_pmf`) — the same CDF-difference masses the pre-0.2 path
-# used, so the modifier counts are unchanged.
-function convolve_series(
-        delay::Transformed, series::AbstractVector{<:Real};
-        interval = 1)
+# forward ops off the wrapper, convolve the inner delay's series with the
+# input, then apply the ops (innermost first) to the resulting counts.
+# ConvolvedDistributions 1.0 removed its `discretise_pmf` convenience
+# entirely (Convolved#68/#73): discretising a continuous delay is a
+# censoring choice it will not make silently, and CD's own #241 migration
+# set the org precedent (throw for continuous, delegate directly for
+# discrete) that this extension now mirrors for modifier-wrapped delays.
+function convolve_series(delay::Transformed, series::AbstractVector{<:Real})
     inner, ops = _peel_forward(delay)
     _check_no_buried_forward_op(inner)
-    counts = _convolve_delay_series(inner, series, interval)
+    counts = _convolve_delay_series(inner, series)
     return _apply_forward_ops(counts, ops)
 end
 
 # A non-forward modifier (`weight` / `affine` / `modify`) only reshapes the
 # delay's density / CDF, so convolving its series is convolving the modified
-# delay's own discretised PMF. A forward op buried under it cannot be peeled
-# without a generic rewrap protocol, and silently convolving the wrapper
-# would drop the op, so that is rejected with guidance (forward ops go
-# outermost).
+# delay's own series. A forward op buried under it cannot be peeled without
+# a generic rewrap protocol, and silently convolving the wrapper would drop
+# the op, so that is rejected with guidance (forward ops go outermost).
 function convolve_series(
-        delay::AbstractModifiedDistribution, series::AbstractVector{<:Real};
-        interval = 1)
+        delay::AbstractModifiedDistribution, series::AbstractVector{<:Real})
     _check_no_buried_forward_op(delay)
-    return _convolve_delay_series(delay, series, interval)
+    return _convolve_delay_series(delay, series)
 end
 
-# Discretise a continuous delay to its interval-censored-secondary PMF and
-# convolve the series with it. ConvolvedDistributions 0.2 no longer
-# discretises a continuous delay inside `convolve_series` (it is
-# discrete-only), so the modifier convenience does it here; the
-# CDF-difference masses over lags `0:(length(series) - 1)` are exactly the
-# pre-0.2 discretisation, so the counts are unchanged. `delay` is a plain
-# delay or a non-forward modifier wrapper, whose own CDF drives the masses.
-function _convolve_delay_series(
-        delay, series::AbstractVector{<:Real}, interval)
-    pmf = discretise_pmf(delay, length(series) - 1; interval = interval)
-    return convolve_series(pmf, series)
+# Whether `delay`'s mass provably concentrates exactly on the integer lag
+# grid `0, 1, 2, ...` that `convolve_series` reads, so it can be read
+# directly with `pdf` and needs no PMF built by hand:
+# - a bare discrete distribution always qualifies (this is exactly
+#   ConvolvedDistributions' own `DiscreteUnivariateDistribution` path);
+# - `Weighted` reshapes only the LOG-likelihood (`pdf` returns the base's
+#   own density unweighted, see `Weighted.jl`), so it never moves support;
+# - `Affine` changes support to `scale * x + shift`; this stays on the
+#   integer grid only for an integer scale AND shift (e.g. `2x + 1` keeps
+#   every point an integer; `1.5x` or a non-integer shift move mass off the
+#   grid entirely, so sampling `pdf` at `0:maxlag` would silently read zero
+#   everywhere rather than the true masses — the grid check exists
+#   precisely to catch that rather than return a silently-wrong PMF);
+# - anything else (`Modified`'s closed-form hazard reshaping, a `Convolved`
+#   composite — always continuous-valued regardless of its components, see
+#   `ConvolvedDistributions.Convolved`'s type definition — or a plain
+#   continuous distribution) does not provably qualify, so it is rejected
+#   rather than guessed at.
+_grid_discrete(d::Distributions.DiscreteUnivariateDistribution) = true
+_grid_discrete(d::Distributions.ContinuousUnivariateDistribution) = false
+_grid_discrete(d::Weighted) = _grid_discrete(get_dist(d))
+function _grid_discrete(d::Affine)
+    return isinteger(get_scale(d)) && isinteger(get_shift(d)) &&
+           _grid_discrete(get_dist(d))
+end
+_grid_discrete(d) = false
+
+# Convolve a delay's series directly when its mass provably sits on the
+# integer lag grid (`_grid_discrete`); otherwise this is exactly the
+# situation ConvolvedDistributions' own `ContinuousUnivariateDistribution`
+# method rejects, so mirror its error rather than silently guessing a
+# discretisation scheme. `delay` is a plain delay or a non-forward modifier
+# wrapper, whose own `pdf` drives the masses when it qualifies.
+function _convolve_delay_series(delay, series::AbstractVector{<:Real})
+    if _grid_discrete(delay)
+        masses = [pdf(delay, k) for k in 0:(length(series) - 1)]
+        return convolve_series(masses, series)
+    end
+    throw(ArgumentError(
+        "convolve_series does not discretise a continuous delay: " *
+        "discretising a continuous delay needs an explicit censoring " *
+        "scheme, and this modifier-wrapped delay's mass does not provably " *
+        "sit on the integer lag grid. Build the PMF explicitly -- " *
+        "`pdf.(dist, 0:maxlag)` from a genuinely discrete distribution, or " *
+        "a CensoredDistributions.jl PMF for a continuous one -- then pass " *
+        "it, as a plain vector or a `ConvolvedDistributions.DelayPMF`, to " *
+        "`convolve_series(pmf, series)`."))
 end
 
 function _check_no_buried_forward_op(d)
