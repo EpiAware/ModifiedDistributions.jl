@@ -41,7 +41,6 @@ import ConvolvedDistributions: convolve_series
 # window.
 import EpiAwareADTools: primal_distribution, cdf_ad_safe, ccdf_ad_safe,
                         logcdf_ad_safe, logccdf_ad_safe
-using ConvolvedDistributions: discretise_pmf
 using EpiAwareADTools: primal
 using ModifiedDistributions: AbstractModifiedDistribution, Affine, Modified,
                              Transformed, Weighted, get_dist, get_scale,
@@ -57,12 +56,10 @@ using Distributions: Distributions, pdf, cdf
 # Convolving a forward-transformed delay with a numeric series: peel the
 # forward ops off the wrapper, convolve the inner delay's discretised PMF
 # with the series, then apply the ops (innermost first) to the resulting
-# counts. ConvolvedDistributions 0.2 makes the bare-distribution
+# counts. ConvolvedDistributions makes the bare-distribution
 # `convolve_series` discrete-only (discretising a continuous delay is an
 # explicit modelling choice it will not make silently), so the inner
-# continuous delay is discretised here with the interval-censored-secondary
-# scheme (`discretise_pmf`) — the same CDF-difference masses the pre-0.2 path
-# used, so the modifier counts are unchanged.
+# continuous delay is discretised here — see `_discretised_masses`.
 function convolve_series(
         delay::Transformed, series::AbstractVector{<:Real};
         interval = 1)
@@ -85,17 +82,42 @@ function convolve_series(
     return _convolve_delay_series(delay, series, interval)
 end
 
-# Discretise a continuous delay to its interval-censored-secondary PMF and
-# convolve the series with it. ConvolvedDistributions 0.2 no longer
-# discretises a continuous delay inside `convolve_series` (it is
-# discrete-only), so the modifier convenience does it here; the
-# CDF-difference masses over lags `0:(length(series) - 1)` are exactly the
-# pre-0.2 discretisation, so the counts are unchanged. `delay` is a plain
-# delay or a non-forward modifier wrapper, whose own CDF drives the masses.
+# Discretise a continuous delay over the series window and convolve. `delay`
+# is a plain delay or a non-forward modifier wrapper, whose own CDF drives
+# the masses.
 function _convolve_delay_series(
         delay, series::AbstractVector{<:Real}, interval)
-    pmf = discretise_pmf(delay, length(series) - 1; interval = interval)
-    return convolve_series(pmf, series)
+    masses = _discretised_masses(delay, length(series) - 1, interval)
+    return convolve_series(masses, series)
+end
+
+# The interval-censored-secondary masses `F((k + 1)h) - F(kh)` over lags
+# `0:maxlag`: the chance the delay lands in bin `k`, given an exact primary
+# event. Raw CDF differences, clamped at zero against numeric-CDF noise,
+# never renormalised, so delay mass beyond the window stays truncated.
+#
+# ConvolvedDistributions 0.3 removed `discretise_pmf` (CD#68) because the
+# censoring scheme is the caller's choice, not that package's. This is the
+# removed function's arithmetic, so the modifier counts are unchanged across
+# the bump. A caller who wants the primary event censored too builds
+# double-interval-censored masses (CensoredDistributions.jl) and convolves
+# them directly.
+function _discretised_masses(delay, maxlag::Integer, interval)
+    maxlag >= 0 ||
+        throw(ArgumentError("convolve_series needs a non-empty series"))
+    interval > 0 ||
+        throw(ArgumentError(
+            "convolve_series interval must be positive, got $(interval)"))
+    # Float the grid step so the CDF arguments are floats even for an
+    # integer `interval`: the AD-safe Gamma CDF rules attach a `Float64`
+    # tangent to the evaluation point, which Mooncake cannot pair with an
+    # `Int` primal.
+    step = float(interval)
+    return map(0:maxlag) do k
+        mass = cdf_ad_safe(delay, (k + 1) * step) -
+               cdf_ad_safe(delay, k * step)
+        max(mass, zero(mass))
+    end
 end
 
 function _check_no_buried_forward_op(d)

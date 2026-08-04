@@ -17,19 +17,12 @@ QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
 
 [extensions]
 ModifiedDistributionsComposedDistributionsExt = "ComposedDistributions"
-# The ConvolvedDistributions extension now also uses EpiAwareADTools' AD-safe
-# hook family (#137), so it triggers only when both are loaded. Since
-# ConvolvedDistributions 0.2 itself depends on EpiAwareADTools, loading
-# ConvolvedDistributions brings EpiAwareADTools with it.
 ModifiedDistributionsConvolvedDistributionsExt = ["ConvolvedDistributions", "EpiAwareADTools"]
-# The numeric hazard path (#77b): quadrature for a callable time-varying
-# effect or a general link on a continuous base, triggered by QuadGK. Core
-# stays Distributions-only; the numeric survival needs a quadrature backend.
 ModifiedDistributionsQuadGKExt = "QuadGK"
 
 [compat]
 ComposedDistributions = "0.1"
-ConvolvedDistributions = "0.2"
+ConvolvedDistributions = "0.2, 0.3"
 Distributions = "0.25"
 DocStringExtensions = "0.9"
 EpiAwareADTools = "0.1"

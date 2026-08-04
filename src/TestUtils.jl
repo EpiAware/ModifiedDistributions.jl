@@ -56,8 +56,9 @@ contract.
 `logpdf` at the in-support point `x` is a `Real`, and `insupport` /
 `minimum` / `maximum` do not throw. Returns the `@testset` object.
 
-The `free_leaf` / `rewrap_leaf` round-trip is not checked here: those verbs
-are owned by ComposedDistributions.jl and live in its package extension. Pass
+The `free_leaf` / `rewrap_leaf` round-trip is not checked here: those verbs are
+ComposedDistributions.jl's generics, and their modifier-leaf methods live in
+this package's own `ModifiedDistributionsComposedDistributionsExt`. Pass
 `roundtrip = (free_leaf, rewrap_leaf)` to inject the round-trip check
 (`rewrap(d, free(d))` must rebuild an equivalent leaf) when a package
 providing them is loaded.

@@ -2,9 +2,7 @@
 # The benchmark environment, so `julia --project=benchmark benchmark/run.jl`
 # resolves. Seeded with BenchmarkTools, the package, and the shared
 # EpiAwarePackageTools benchmark harness; the AD-backend deps drive the
-# gradient suite (`benchmark/src/ad_gradients.jl`). EpiAwarePackageTools is
-# pinned by git via `[sources]` until it is registered (mirror the test env's
-# pin if you switch to a path).
+# gradient suite (`benchmark/src/ad_gradients.jl`).
 [deps]
 ADFixtures = "114781d2-3049-4c58-b3ab-bb4a1376abee"
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -25,18 +23,11 @@ ModifiedDistributions = "664e6f8c-d74f-44d3-9f37-f82699103046"
 [sources]
 ADFixtures = {path = "../test/ADFixtures"}
 ModifiedDistributions = {path = ".."}
-# Until EpiAwarePackageTools is registered, it is pinned by git so
-# the env resolves out of the box. Switch to a local path to
-# develop the kit alongside this package.
-EpiAwarePackageTools = {url = "https://github.com/EpiAware/EpiAwarePackageTools.jl", rev = "main"}
-# ComposedDistributions (the ModifiedDistributionsComposedDistributionsExt
-# trigger, exercised by the Sequential AD scenario) is unregistered, so it
-# is pinned by git. ConvolvedDistributions resolves from the registry
-# (0.2.0) pending the discrete-support design ruling (Convolved#85); see
-# ModifiedDistributions#92.
-ComposedDistributions = {url = "https://github.com/EpiAware/ComposedDistributions.jl", rev = "main"}
-EpiAwareADTools = {url = "https://github.com/EpiAware/EpiAwareADTools.jl", rev = "main"}
 
 [compat]
 BenchmarkTools = "1"
+ComposedDistributions = "0.1"
+ConvolvedDistributions = "0.2, 0.3"
 Distributions = "0.25"
+EpiAwareADTools = "0.1"
+EpiAwarePackageTools = "0.2"

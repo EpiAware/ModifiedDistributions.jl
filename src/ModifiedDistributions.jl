@@ -61,6 +61,11 @@ export modify
 # The queryable sub-stochastic-law surface: the mass a `modify`d law holds,
 # and whether any is missing (#107).
 export total_mass, is_defective
+# The declared/effective intensity readers over a `thin` node's factor
+# (#106): `intensity` reads it plain; `effective_intensity` scales it by a
+# composed tree's reach and surviving-competitor mass (needs
+# ComposedDistributions.jl loaded to descend a non-empty path).
+export intensity, effective_intensity
 # The generic unwrap protocol owned by this package.
 export get_dist, get_dist_recursive
 
