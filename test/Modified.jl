@@ -552,3 +552,25 @@ end
     dt = modify(trunc_base, -0.4; link = identity)
     @test total_mass(dt) ≈ cdf(dt, 10.0)
 end
+
+@testitem "Modified total_mass and is_defective: numeric cumulative-hazard path" begin
+    using Distributions
+    using QuadGK
+
+    # A callable effect takes the numeric path (_NumericModified) rather than
+    # the identity-link closed form, even for a constant callable, since the
+    # dispatch is on the effect's type (#77b). A constant negative callable
+    # therefore exercises total_mass/is_defective through _defective_total_mass
+    # the same way the closed-form identity path does, and must agree with it.
+    base = LogNormal(1.5, 0.5)
+    d_numeric = modify(base, t -> -0.4; link = identity)
+    d_closed = modify(base, -0.4; link = identity)
+    @test total_mass(d_numeric) ≈ total_mass(d_closed) atol=1e-6
+    @test is_defective(d_numeric)
+    @test ccdf(d_numeric, 1.0e6) ≈ 1 - total_mass(d_numeric) atol=1e-8
+
+    # A callable effect that never drives the hazard negative stays proper.
+    d_proper = modify(base, t -> 0.1 * t; link = identity)
+    @test total_mass(d_proper) ≈ 1.0 atol=1e-6
+    @test !is_defective(d_proper)
+end

@@ -1047,21 +1047,16 @@ total_mass(d::_NumericModified) = _defective_total_mass(d)
 
 # The limiting cdf as x grows without bound: the total probability mass a
 # clamped modified law holds. Evaluated exactly at the base's own finite
-# maximum when the support is bounded; otherwise doubles the query point from
-# a deep base quantile until successive cdfs agree to `_DEFECTIVE_TOL`,
-# mirroring the bracket the `quantile` methods already expand to detect a
-# defective law (see their `ArgumentError`s above).
-function _defective_total_mass(d; maxiter::Int = 64)
+# maximum when the support is bounded; otherwise doubled once past a deep
+# base quantile, mirroring the bracket the `quantile` methods already expand
+# to detect a defective law (see their `ArgumentError`s above). A single
+# doubling past `quantile(d.dist, 1 - 1e-12)` is always enough: the deficit
+# left there is already below Float64's resolution near one, so a further
+# doubling cannot change the returned cdf by more than `_DEFECTIVE_TOL`.
+function _defective_total_mass(d)
     hicap = float(maximum(d.dist))
     isfinite(hicap) && return cdf(d, hicap)
     lo = float(minimum(d))
     hi = max(float(quantile(d.dist, 1 - 1e-12)), lo + one(lo))
-    prev = cdf(d, hi)
-    for _ in 1:maxiter
-        hi = lo + 2 * (hi - lo)
-        cur = cdf(d, hi)
-        abs(cur - prev) < _DEFECTIVE_TOL && return cur
-        prev = cur
-    end
-    return prev
+    return cdf(d, lo + 2 * (hi - lo))
 end
