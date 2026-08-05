@@ -196,7 +196,8 @@ To add a modifier, follow [Writing a new modifier](@ref extending).
 **A:**
 - **Bugs**: File a GitHub issue with a minimal reproducible example
 - **Feature requests**: Open a GitHub issue with rationale and use case
-- **Questions**: Use GitHub Discussions for broader questions
+- **Questions**: Ask on the [Julia Discourse](https://discourse.julialang.org/)
+  or the [epinowcast community forum](https://community.epinowcast.org)
 
 ## Troubleshooting
 
@@ -219,6 +220,8 @@ To add a modifier, follow [Writing a new modifier](@ref extending).
 
 For development-specific questions:
 
-- **Code issues**: Open a [GitHub Discussion](https://github.com/EpiAware/ModifiedDistributions.jl/discussions)
+- **Code issues and usage questions**: the
+  [Julia Discourse](https://discourse.julialang.org/) or the
+  [epinowcast community forum](https://community.epinowcast.org)
 - **Bug reports**: [GitHub Issues](https://github.com/EpiAware/ModifiedDistributions.jl/issues)
 - **General Julia development**: [Julia Discourse](https://discourse.julialang.org/)

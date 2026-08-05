@@ -47,11 +47,8 @@ const TUTORIAL_STUBS = [
 # published by a separate workflow that is not yet live.
 # - The stable docs URL 404s until the first tagged release deploys; drop
 #   the ignore once /stable is live (dev already resolves).
-# - GitHub Discussions is not yet enabled on the repo (needs an admin);
-#   drop the ignore once it is.
 const LINKCHECK_IGNORE = [
     r"^https://modifieddistributions\.epiaware\.org/stable",
-    r"^https://github\.com/EpiAware/ModifiedDistributions\.jl/discussions",
     # External sites that intermittently time out under CI linkcheck (seen
     # flaking on unrelated runs); the links are stable, the checks are not.
     r"^https://code\.visualstudio\.com",
