@@ -85,8 +85,9 @@ See [Infrastructure and template sync](@ref infrastructure) for details.
 
 ## Release notes
 
-- **GitHub Releases**: created by TagBot for every release, with a generated changelog linking commits and pull requests
-- **NEWS.md**: reserved for major releases and significant milestones, giving context for breaking changes and migration guidance
+Every release is a GitHub release, created by TagBot with a generated changelog linking commits and pull requests.
+The release notes docs page fetches and reproduces the most recent ones at build time.
+Write new notes on the release itself rather than in `NEWS.md`, which is kept only as a historical pointer.
 
 ## Pre-release checklist
 
@@ -99,7 +100,7 @@ Before triggering registration:
 
 For a major release, additionally:
 
-- [ ] NEWS.md entry describing the breaking changes and migration path
+- [ ] Breaking changes and migration path described in the GitHub release notes
 - [ ] Deprecation warnings added in a previous release where applicable
 - [ ] Downstream package compatibility assessed
 
