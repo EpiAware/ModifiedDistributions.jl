@@ -1,7 +1,7 @@
-@testitem "Affine constructor and validation" begin
+@testitem "Affine constructor and validation" setup=[BaseDistFixture] begin
     using Distributions
 
-    d = affine(LogNormal(1.5, 0.5); scale = 2.0, shift = 1.0)
+    d = affine(base_dist(); scale = 2.0, shift = 1.0)
     @test d isa ModifiedDistributions.Affine
     @test d.scale == 2.0
     @test d.shift == 1.0
@@ -16,15 +16,19 @@
     @test dm.scale isa Float64
     @test dm.shift isa Float64
 
-    # scale must be positive.
-    @test_throws ArgumentError affine(Normal(0.0, 1.0); scale = 0.0)
-    @test_throws ArgumentError affine(Normal(0.0, 1.0); scale = -1.0)
+    # scale must be positive. The message identifies the branch, so a
+    # constructor that started throwing ArgumentError for an unrelated
+    # reason would no longer pass silently.
+    @test_throws ArgumentError("scale must be positive") affine(
+        Normal(0.0, 1.0); scale = 0.0)
+    @test_throws ArgumentError("scale must be positive") affine(
+        Normal(0.0, 1.0); scale = -1.0)
 end
 
-@testitem "Affine change-of-variables logpdf/cdf" begin
+@testitem "Affine change-of-variables logpdf/cdf" setup=[BaseDistFixture] begin
     using Distributions
 
-    inner = LogNormal(1.5, 0.5)
+    inner = base_dist()
     d = affine(inner; scale = 2.0, shift = 1.0)
     for y in [2.0, 3.5, 5.0, 8.0]
         x = (y - 1.0) / 2.0
@@ -168,20 +172,21 @@ end
     @test affine(Poisson(2.0); scale = 2.0) isa DiscreteUnivariateDistribution
 end
 
-@testitem "Affine eltype and get_dist" begin
+@testitem "Affine eltype and get_dist" setup=[BaseDistFixture] begin
     using Distributions
 
-    inner = LogNormal(1.5, 0.5)
+    inner = base_dist()
     d = affine(inner; scale = 2.0, shift = 1.0)
     @test eltype(d) == Float64
     @test get_dist(d) === inner
     @test get_dist_recursive(d) === inner
 end
 
-@testitem "Affine pdf integrates to one and matches cdf derivative" begin
+@testitem "Affine pdf integrates to one and matches cdf derivative" setup=[
+    BaseDistFixture] begin
     using Distributions
 
-    d = affine(LogNormal(1.5, 0.5); scale = 2.0, shift = 1.0)
+    d = affine(base_dist(); scale = 2.0, shift = 1.0)
 
     ts = range(1.0, 80.0; length = 200_000)
     h = step(ts)
@@ -204,10 +209,10 @@ end
     @test isapprox(std(xs), sqrt(var(d)); atol = 0.05)
 end
 
-@testitem "Affine batched vector observations" begin
+@testitem "Affine batched vector observations" setup=[BaseDistFixture] begin
     using Distributions
 
-    inner = LogNormal(1.5, 0.5)
+    inner = base_dist()
     d = affine(inner; scale = 2.0, shift = 1.0)
     ys = [2.0, 3.5, 5.0, 8.0]
 
@@ -230,7 +235,8 @@ end
     @test batched_d[3] == -Inf
 end
 
-@testitem "Affine delegates a whole batch to the inner distribution" begin
+@testitem "Affine delegates a whole batch to the inner distribution" setup=[
+    BaseDistFixture] begin
     using Distributions
 
     # A spy inner distribution counting scalar vs batched calls. When the
@@ -242,7 +248,7 @@ end
         nscalar::Base.RefValue{Int}
         nvector::Base.RefValue{Int}
     end
-    SpyDist() = SpyDist(LogNormal(1.5, 0.5), Ref(0), Ref(0))
+    SpyDist() = SpyDist(base_dist(), Ref(0), Ref(0))
     for f in (:pdf, :logpdf, :cdf, :logcdf, :ccdf, :logccdf)
         @eval function Distributions.$f(d::SpyDist, x::Real)
             d.nscalar[] += 1
