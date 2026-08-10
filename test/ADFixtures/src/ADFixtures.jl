@@ -171,7 +171,7 @@ function scenarios(; with_reference::Bool = false, category::Symbol = :marginal)
     # path: differentiating a BASE param through a genuinely clamped numeric
     # law trips a pre-existing `Vector{Float64}` knot-type bug in
     # `_scan_crossings` (src/Modified.jl) — out of this PR's file scope,
-    # reported separately rather than papered over here.
+    # tracked as #154 rather than papered over here.
     base_quad = LogNormal(1.5, 0.5)
     obs_quad = [1.0, 2.5, 4.0, 6.0]
     _push!("Modified numeric quadrature clamped additive LogNormal logpdf",
