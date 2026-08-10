@@ -27,7 +27,7 @@ ModifiedDistributions = {path = ".."}
 [compat]
 BenchmarkTools = "1"
 ComposedDistributions = "0.1"
-ConvolvedDistributions = "0.2, 0.3"
+ConvolvedDistributions = "0.2, 0.3, 0.4"
 Distributions = "0.25"
 EpiAwareADTools = "0.1"
 EpiAwarePackageTools = "0.2"
