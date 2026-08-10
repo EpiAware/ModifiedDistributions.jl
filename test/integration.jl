@@ -84,13 +84,17 @@ end
     # convolve_series routes to ConvolvedDistributions' own discrete-only
     # method, which refuses to silently discretise a continuous delay. This
     # is by design: the caller discretises explicitly (or wraps in a
-    # modifier, whose convenience path discretises for them).
+    # modifier, whose convenience path discretises for them). CD 0.4 dropped
+    # the checked gate (#95): a continuous delay now simply matches no
+    # method (`MethodError`) rather than the hand-rolled `ArgumentError`
+    # 0.2/0.3 threw, so both count as "refused" here.
     seq = sequential(:onset_admit => Gamma(2.0, 1.0),
         :admit_death => LogNormal(0.5, 0.4))
     observed = observed_distribution(seq)
     series = [0.0, 5.0, 12.0, 20.0, 15.0, 8.0, 3.0]
 
-    @test_throws ArgumentError convolve_series(observed, series)
+    @test_throws Union{ArgumentError, MethodError} convolve_series(
+        observed, series)
 
     # The explicit route works and equals the modifier convenience path with
     # an identity op.
