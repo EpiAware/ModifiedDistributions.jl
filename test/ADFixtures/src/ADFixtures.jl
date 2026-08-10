@@ -307,8 +307,30 @@ end
 "Scenario names broken on every backend."
 broken_scenario_names() = String[]
 
+# The QuadGK numeric-quadrature scenario differentiates through `quadgk`
+# (ModifiedDistributionsQuadGKExt), which neither reverse-mode backend
+# supports here:
+#
+# - Mooncake reverse: `QuadGK.cachedrule` uses a `try/catch`, which
+#   Mooncake.jl's reverse mode does not support (a documented Mooncake
+#   limitation, not something this package's code can route around).
+# - Enzyme reverse: `QuadGKEnzymeExt`'s custom `quadgk` reverse rule does
+#   not match the call signature reached through the clamp-knot
+#   subdivision path (`quadgk(f, m, knots..., xf)` with a runtime-length
+#   knot splat), so Enzyme falls through to plain source differentiation
+#   and hits an unsupported `reverse` method.
+#
+# Both are genuine per-backend gaps, not package bugs (#100): the forward
+# variants of the same two backends (Mooncake forward, Enzyme forward),
+# ForwardDiff, and ReverseDiff all differentiate this scenario correctly.
 "Per-backend broken scenario names (`Dict{String, Set{String}}`)."
-backend_broken_scenarios() = Dict{String, Set{String}}()
+function backend_broken_scenarios()
+    quadgk_scenario = "Modified numeric quadrature clamped additive LogNormal logpdf"
+    return Dict{String, Set{String}}(
+        "Mooncake reverse" => Set([quadgk_scenario]),
+        "Enzyme reverse" => Set([quadgk_scenario])
+    )
+end
 
 "Per-backend scenario names too unstable to run at all."
 backend_skip_scenarios() = Dict{String, Set{String}}()
