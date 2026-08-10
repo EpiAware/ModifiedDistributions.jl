@@ -637,25 +637,31 @@ end
 @testitem "batch sampling uses the base sampler" begin
     using Distributions, Random
 
-    # Gamma and Poisson have dedicated sampler objects; re-wrapping them
-    # in Weighted crashed batch rand (pre-release review finding).
+    # Gamma and Poisson have dedicated sampler objects; re-wrapping them in
+    # Weighted crashed batch rand (pre-release review finding). Delegation
+    # means the SAME draws the base distributions would produce from an
+    # identically-seeded rng consuming in the same order, not merely
+    # plausible values from the right family.
     rng = MersenneTwister(7)
     draws_gamma = rand(rng, weight(Gamma(2.0, 3.0), 3.0), 4)
     draws_pois = rand(rng, weight(Poisson(4.0), 2.0), 4)
-    (gamma = draws_gamma, poisson = draws_pois)
-    @test length(draws_gamma) == 4
-    @test all(>(0), draws_gamma)
-    @test length(draws_pois) == 4
-    @test all(>=(0), draws_pois)
+
+    ref_rng = MersenneTwister(7)
+    @test draws_gamma == rand(ref_rng, Gamma(2.0, 3.0), 4)
+    @test draws_pois == rand(ref_rng, Poisson(4.0), 4)
 end
 
 @testitem "scalar rand delegates to the base distribution" begin
     using Distributions, Random
 
-    wd = weight(Gamma(2.0, 3.0), 5.0)
+    base = Gamma(2.0, 3.0)
+    wd = weight(base, 5.0)
+
+    # Delegation means the SAME draw the base distribution would produce from
+    # an identically-seeded rng, not merely a plausible value from the same
+    # family.
     draw = rand(MersenneTwister(11), wd)
-    @test draw isa Real
-    @test draw > 0
+    @test draw == rand(MersenneTwister(11), base)
 end
 
 @testitem "value support propagates through Weighted (#46)" begin
