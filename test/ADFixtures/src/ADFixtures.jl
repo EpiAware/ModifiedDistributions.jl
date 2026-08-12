@@ -12,7 +12,7 @@ module ADFixtures
 __precompile__(false)
 
 using ModifiedDistributions
-using Distributions: Gamma, LogNormal, logpdf
+using Distributions: DiscreteNonParametric, Gamma, LogNormal, logpdf
 # Loading ComposedDistributions activates the package's
 # ModifiedDistributionsComposedDistributionsExt extension, whose collapse of a
 # `Sequential` chain to its observed convolved total is exercised below.
@@ -21,6 +21,10 @@ using ComposedDistributions: sequential
 # ModifiedDistributionsConvolvedDistributionsExt, whose series handshake
 # (a thinned convolved count series) is exercised below.
 using ConvolvedDistributions: convolve_series
+# Loading QuadGK activates ModifiedDistributionsQuadGKExt, whose numeric
+# cumulative-hazard quadrature (the callable/general-link `modify` path) is
+# exercised below.
+using QuadGK: QuadGK
 using ADTypes: AutoForwardDiff, AutoReverseDiff, AutoMooncake,
                AutoMooncakeForward, AutoEnzyme
 using DifferentiationInterface: DifferentiationInterface, Constant
@@ -47,13 +51,17 @@ the `affine` change-of-variables logpdf (gradient through the inner delay
 params, the scale, and the shift), the `weight` count/aggregated-data
 likelihood (scalar, `Product{Weighted}` vector, and observation-time weight
 forms), the `modify` hazard logpdf on both links (log and identity; gradient
-through the inner params and the effect), the `thin`/`cumulative` forward
-transforms (transparent delegation to the inner logpdf), a nested
-`weight`-over-`affine` stack (gradients through both wrappers at once), the
-ComposedDistributions extension (`weight` of a `Sequential` chain,
-collapsing to the observed convolved total via the numeric quadrature), and
-the ConvolvedDistributions extension (a thinned convolved count series,
-whose interval masses differentiate through the delay params).
+through the inner params and the effect), the `thin`/`cumulative`/generic
+`series_transform` forward transforms (transparent delegation to the inner
+logpdf), a nested `weight`-over-`affine` stack (gradients through both
+wrappers at once), the `modify` discrete per-bin reporting-hazard logpdf
+(logit link, gradient through the effect vector), the `modify` numeric
+cumulative-hazard logpdf (QuadGK quadrature, gradient through the inner
+params and a clamped additive effect), the ComposedDistributions extension
+(`weight` of a `Sequential` chain, collapsing to the observed convolved
+total via the numeric quadrature), and the ConvolvedDistributions extension
+(a thinned convolved count series, whose interval masses differentiate
+through the delay params).
 """
 function scenarios(; with_reference::Bool = false, category::Symbol = :marginal)
     out = DIT.Scenario{:gradient, :out}[]
@@ -136,6 +144,43 @@ function scenarios(; with_reference::Bool = false, category::Symbol = :marginal)
             obs),
         [1.0, 0.5, -0.9], (Constant(obs_mod),))
 
+    # Modified discrete per-bin reporting-hazard logpdf (logit link): the
+    # whole PMF -> hazard -> logit-effect -> PMF map (`reporting_hazard.jl`)
+    # is AD-safe vector arithmetic, so the gradient flows through the per-bin
+    # effect vector θ. The base PMF is inactive `Constant` data. Mirrors
+    # `test/Modified.jl`'s ad hoc ForwardDiff-only check (#100).
+    disc_base = DiscreteNonParametric(collect(0:4), fill(0.2, 5))
+    obs_disc = [0.0, 1.0, 2.0, 3.0, 4.0]
+    _push!("Modified discrete logit-link per-bin logpdf",
+        (θ,
+            base,
+            obs) -> sum(
+            x -> logpdf(modify(base, θ; link = :logit), x), obs),
+        [0.1, 0.2, -0.1, 0.3, 0.0],
+        (Constant(disc_base), Constant(obs_disc)))
+
+    # Modified numeric cumulative-hazard logpdf (QuadGK quadrature): a
+    # constant *callable* additive effect forces the numeric path (a scalar
+    # effect under `identity` would take the closed form instead), and the
+    # negative effect clamps the hazard, so the gradient must flow through
+    # `_scan_crossings`' clamp-knot bisection AND `quadgk`'s adaptive
+    # subdivision. This is the highest reverse-mode-AD-risk code in the
+    # package — control flow inside numerical integration (#100). The base
+    # is a fixed literal (not differentiated), matching the precedent in
+    # `test/Modified.jl`'s ad hoc ForwardDiff check of this same clamped
+    # path: differentiating a BASE param through a genuinely clamped numeric
+    # law trips a pre-existing `Vector{Float64}` knot-type bug in
+    # `_scan_crossings` (src/Modified.jl) — out of this PR's file scope,
+    # tracked as #154 rather than papered over here.
+    base_quad = LogNormal(1.5, 0.5)
+    obs_quad = [1.0, 2.5, 4.0, 6.0]
+    _push!("Modified numeric quadrature clamped additive LogNormal logpdf",
+        (θ,
+            base,
+            obs) -> sum(
+            x -> logpdf(modify(base, _ -> θ[1]; link = identity), x), obs),
+        [-0.4], (Constant(base_quad), Constant(obs_quad)))
+
     # Transformed thin logpdf: the forward op is transparent to `logpdf`, so
     # the gradient flows through the inner delay params only. The thin factor
     # is data (a literal), not a differentiated parameter, since `thin`
@@ -152,6 +197,19 @@ function scenarios(; with_reference::Bool = false, category::Symbol = :marginal)
         (θ,
             obs) -> sum(
             x -> logpdf(cumulative(LogNormal(θ[1], θ[2])), x), obs),
+        [1.0, 0.75], (Constant(obs),))
+
+    # Transformed series_transform logpdf: the generic forward-op escape
+    # hatch (any `series -> series` callable) is the same transparent
+    # delegation as `thin`/`cumulative`, so the gradient flows through the
+    # inner delay params only. The op itself is data (a plain closure over
+    # no differentiated state), not a differentiated parameter.
+    _push!("Transformed series_transform LogNormal logpdf",
+        (θ,
+            obs) -> sum(
+            x -> logpdf(
+                series_transform(LogNormal(θ[1], θ[2]), s -> 0.5 .* s), x),
+            obs),
         [1.0, 0.75], (Constant(obs),))
 
     # Weighted observation-time weight path: the constructor weight is
@@ -249,8 +307,30 @@ end
 "Scenario names broken on every backend."
 broken_scenario_names() = String[]
 
+# The QuadGK numeric-quadrature scenario differentiates through `quadgk`
+# (ModifiedDistributionsQuadGKExt), which neither reverse-mode backend
+# supports here:
+#
+# - Mooncake reverse: `QuadGK.cachedrule` uses a `try/catch`, which
+#   Mooncake.jl's reverse mode does not support (a documented Mooncake
+#   limitation, not something this package's code can route around).
+# - Enzyme reverse: `QuadGKEnzymeExt`'s custom `quadgk` reverse rule does
+#   not match the call signature reached through the clamp-knot
+#   subdivision path (`quadgk(f, m, knots..., xf)` with a runtime-length
+#   knot splat), so Enzyme falls through to plain source differentiation
+#   and hits an unsupported `reverse` method.
+#
+# Both are genuine per-backend gaps, not package bugs (#100): the forward
+# variants of the same two backends (Mooncake forward, Enzyme forward),
+# ForwardDiff, and ReverseDiff all differentiate this scenario correctly.
 "Per-backend broken scenario names (`Dict{String, Set{String}}`)."
-backend_broken_scenarios() = Dict{String, Set{String}}()
+function backend_broken_scenarios()
+    quadgk_scenario = "Modified numeric quadrature clamped additive LogNormal logpdf"
+    return Dict{String, Set{String}}(
+        "Mooncake reverse" => Set([quadgk_scenario]),
+        "Enzyme reverse" => Set([quadgk_scenario])
+    )
+end
 
 "Per-backend scenario names too unstable to run at all."
 backend_skip_scenarios() = Dict{String, Set{String}}()
