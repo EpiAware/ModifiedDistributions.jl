@@ -1,15 +1,20 @@
-@testitem "thin / cumulative construction and validation" begin
+@testitem "thin / cumulative construction and validation" setup=[
+    BaseDistFixture] begin
     using ModifiedDistributions, Distributions
 
-    d = thin(LogNormal(1.5, 0.5), 0.3)
+    d = thin(base_dist(), 0.3)
     @test d isa ModifiedDistributions.Transformed
     @test d.op isa ModifiedDistributions.ThinOp
     @test d.op.factor == 0.3
-    @test get_dist(d) === LogNormal(1.5, 0.5)
+    @test get_dist(d) === base_dist()
 
-    # thin probability must be in [0, 1].
-    @test_throws ArgumentError thin(Normal(0.0, 1.0), -0.1)
-    @test_throws ArgumentError thin(Normal(0.0, 1.0), 1.5)
+    # thin probability must be in [0, 1]. The message identifies the
+    # branch, so a constructor throwing ArgumentError for an unrelated
+    # reason would no longer pass silently.
+    @test_throws ArgumentError("thin probability must be in [0, 1]") thin(
+        Normal(0.0, 1.0), -0.1)
+    @test_throws ArgumentError("thin probability must be in [0, 1]") thin(
+        Normal(0.0, 1.0), 1.5)
     @test thin(Normal(0.0, 1.0), 0.0).op.factor == 0.0
     @test thin(Normal(0.0, 1.0), 1.0).op.factor == 1.0
 
@@ -28,10 +33,11 @@
     @test logpdf(g, 2.0) == logpdf(Gamma(2.0, 1.0), 2.0)
 end
 
-@testitem "forward transforms are transparent to logpdf/cdf" begin
+@testitem "forward transforms are transparent to logpdf/cdf" setup=[
+    BaseDistFixture] begin
     using ModifiedDistributions, Distributions
 
-    inner = LogNormal(1.5, 0.5)
+    inner = base_dist()
     for d in (thin(inner, 0.3), cumulative(inner))
         for x in [0.5, 1.0, 2.0, 4.0]
             @test logpdf(d, x) == logpdf(inner, x)
@@ -53,10 +59,11 @@ end
     end
 end
 
-@testitem "forward transforms delegate sampling" begin
+@testitem "forward transforms delegate sampling" setup=[
+    BaseDistFixture] begin
     using ModifiedDistributions, Distributions, Random
 
-    inner = LogNormal(1.5, 0.5)
+    inner = base_dist()
     d = thin(inner, 0.3)
 
     # sampler delegates to the inner distribution's sampler, so draws match
@@ -186,14 +193,15 @@ end
     @test draw > 0
 end
 
-@testitem "value support propagates through Transformed (#46)" begin
+@testitem "value support propagates through Transformed (#46)" setup=[
+    BaseDistFixture] begin
     using ModifiedDistributions, Distributions
     using Distributions: value_support
 
     # A continuous inner distribution yields a Continuous Transformed; a
     # discrete inner yields a Discrete one, rather than the erased
     # `ValueSupport`. This keeps modifier nesting order-independent.
-    dc = thin(LogNormal(1.5, 0.5), 0.3)
+    dc = thin(base_dist(), 0.3)
     @test value_support(typeof(dc)) === Continuous
     @test dc isa ContinuousUnivariateDistribution
 
@@ -206,7 +214,7 @@ end
 
     # Nesting preserves the inner support: a Modified (continuous-only) now
     # accepts a thinned continuous base, which support erasure used to reject.
-    nested = modify(thin(LogNormal(1.5, 0.5), 0.3), 0.5)
+    nested = modify(thin(base_dist(), 0.3), 0.5)
     @test nested isa ModifiedDistributions.Modified
     @test value_support(typeof(nested)) === Continuous
 end
@@ -220,12 +228,17 @@ end
           ModifiedDistributions.get_factor(ModifiedDistributions.get_op(node))
 
     # A node with no factor errors clearly rather than returning a default.
-    @test_throws ArgumentError intensity(Gamma(2.0, 1.0))
+    # The message names the `thin`/`ThinOp` requirement, distinguishing this
+    # branch from the composed-tree error `effective_intensity` raises below.
+    no_factor_msg = ArgumentError(
+        "no declared intensity: only a `thin(d, p)` node (a `Transformed` " *
+        "carrying a `ThinOp`) has a declared factor")
+    @test_throws no_factor_msg intensity(Gamma(2.0, 1.0))
 
     # A Transformed carrying a non-ThinOp (cumulative / a bare callable) has
     # no declared factor either.
-    @test_throws ArgumentError intensity(cumulative(Gamma(2.0, 1.0)))
-    @test_throws ArgumentError intensity(
+    @test_throws no_factor_msg intensity(cumulative(Gamma(2.0, 1.0)))
+    @test_throws no_factor_msg intensity(
         series_transform(Gamma(2.0, 1.0), s -> 0.5 .* s))
 end
 
@@ -237,6 +250,12 @@ end
     @test effective_intensity(node, ()) == 0.3
 
     # A non-empty path needs a composed tree (ComposedDistributions loaded);
-    # without it this errors clearly rather than silently misreading.
-    @test_throws ArgumentError effective_intensity(node, (:death,))
+    # without it this errors clearly rather than silently misreading, with a
+    # message distinct from `intensity`'s no-declared-factor error above.
+    @test_throws ArgumentError(
+        "effective_intensity(tree, path) with a non-empty path needs a " *
+        "composed tree to descend; load ComposedDistributions.jl (`using " *
+        "ComposedDistributions`), which teaches this function to walk a " *
+        "Sequential/Parallel/Resolve/Compete/Choose tree") effective_intensity(
+        node, (:death,))
 end

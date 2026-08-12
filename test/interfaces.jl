@@ -11,9 +11,10 @@
 
     # One fixture per public constructor form: `d` the modifier and `x` an
     # in-support point to score. New modifiers must add a fixture here (the
-    # completeness meta-test enforces it).
-    function modifier_fixtures()
-        base = LogNormal(1.5, 0.5)
+    # completeness meta-test enforces it). `@testsnippet`s cannot `setup=`
+    # each other, so `base` is threaded in from the shared `BaseDistFixture`
+    # (`test/fixtures.jl`) rather than reconstructed here.
+    function modifier_fixtures(base)
         return (
             (; name = "affine",
                 d = affine(base; scale = 2.0, shift = 1.0), x = 5.0),
@@ -34,22 +35,24 @@
     end
 end
 
-@testitem "modified interface conformance" setup=[ModifierFixtures] begin
+@testitem "modified interface conformance" setup=[
+    ModifierFixtures, BaseDistFixture] begin
     using ModifiedDistributions.TestUtils: test_modified_interface
 
     # Run the one leaf-modifier checklist over the full fixture registry.
     # Each fixture's `@testset` records its own asserts.
-    for fix in modifier_fixtures()
+    for fix in modifier_fixtures(base_dist())
         test_modified_interface(fix.d; name = fix.name, x = fix.x)
     end
 end
 
-@testitem "fixture registry completeness" setup=[ModifierFixtures] begin
+@testitem "fixture registry completeness" setup=[
+    ModifierFixtures, BaseDistFixture] begin
     # Completeness meta-test: walk the package's public names, collect the
     # concrete subtypes of `AbstractModifiedDistribution`, and assert each has
     # at least one fixture. A new public modifier added without a fixture in
     # `modifier_fixtures()` fails here.
-    fixtures = modifier_fixtures()
+    fixtures = modifier_fixtures(base_dist())
     modifier_types = Any[]
     for n in names(ModifiedDistributions)
         isdefined(ModifiedDistributions, n) || continue
@@ -67,14 +70,14 @@ end
     end
 end
 
-@testitem "roundtrip injection hook" begin
+@testitem "roundtrip injection hook" setup=[BaseDistFixture] begin
     using Distributions
     using ModifiedDistributions.TestUtils: test_modified_interface
 
     # The `roundtrip` keyword injects a `(free, rewrap)` pair, standing in
     # for ComposedDistributions' `free_leaf` / `rewrap_leaf` verbs. A weight
     # leaf frees to its inner distribution and rewraps with the same weight.
-    d = weight(LogNormal(1.5, 0.5), 3.0)
+    d = weight(base_dist(), 3.0)
     free = get_dist
     rewrap = (wd, inner) -> weight(inner, wd.weight)
     ts = test_modified_interface(d; x = 2.0, roundtrip = (free, rewrap))
