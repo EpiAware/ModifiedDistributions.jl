@@ -49,10 +49,14 @@ const TUTORIAL_STUBS = [
 #   the ignore once /stable is live (dev already resolves).
 const LINKCHECK_IGNORE = [
     r"^https://modifieddistributions\.epiaware\.org/stable",
-    # External sites that intermittently time out under CI linkcheck (seen
-    # flaking on unrelated runs); the links are stable, the checks are not.
+    # External sites that intermittently time out or rate-limit (HTTP 429)
+    # under CI linkcheck (seen flaking on unrelated runs); the links are
+    # stable, the checks are not.
     r"^https://code\.visualstudio\.com",
-    r"^https://github\.com/go-task/task/releases"
+    r"^https://github\.com/go-task/task/releases",
+    # The epinowcast Discourse forum rate-limits CI linkcheck with HTTP 429;
+    # the link is stable but the forum throttles the check.
+    r"^https://community\.epinowcast\.org"
 ]
 
 # README -> index.md link rewrites: `from => to` pairs applied line by line,
