@@ -57,6 +57,10 @@
     cloglog = ModifiedDistributions.hazard_link(
         h -> log(-log1p(-h)), eta -> -expm1(-exp(eta)))
     @test cloglog isa ModifiedDistributions.HazardLink
+    # The wrapped pair is a genuine link/inverse: it round-trips.
+    for h in (0.1, 0.3, 0.6, 0.9)
+        @test cloglog.invlink(cloglog.g(h)) ≈ h
+    end
     @test modify(base, 0.5; link = cloglog) isa ModifiedDistributions.Modified
 
     # A discrete base accepts a per-bin vector effect under ANY link (the
@@ -239,24 +243,51 @@ end
     using QuadGK
 
     base = LogNormal(1.5, 0.5)
+    effect = t -> 0.1 * t
+
+    # The base hazard h(u) = f(u)/S(u), computed independently of the
+    # package's own `_base_hazard`.
+    function ref_hazard(dist, u)
+        logS = logccdf(dist, u)
+        return isfinite(logS) ? exp(logpdf(dist, u) - logS) : Inf
+    end
+
+    # A brute-force trapezoidal reference for the modified log-survival,
+    # matching the general formula in the `Modified` docstring,
+    # H*(t) = ∫ₘᵗ max(g⁻¹(g(h(u)) + effect(u)), 0) du, with plain arithmetic
+    # rather than the package's own quadrature path.
+    function brute_logccdf(dist, eff, g, ginv, x; n = 200_000)
+        m = minimum(dist)
+        x <= m && return 0.0
+        us = range(m, x; length = n)
+        du = step(us)
+        acc = 0.0
+        for u in us
+            hstar = max(ginv(g(ref_hazard(dist, u)) + eff(u)), 0.0)
+            acc += hstar * du
+        end
+        return -acc
+    end
 
     # A callable effect on a continuous base is a time-varying hazard whose
     # cumulative-hazard integral has no closed form, so it takes the numeric
     # path (evaluated by the QuadGK extension, #77b). Construction succeeds;
     # get_effect returns the callable; params drops it (a callable carries no
     # numeric parameters).
-    for link in (log, identity)
-        d = modify(base, t -> 0.1 * t; link = link)
+    for (link, g, ginv) in ((log, log, exp), (identity, identity, identity))
+        d = modify(base, effect; link = link)
         @test d isa ModifiedDistributions.Modified
         @test ModifiedDistributions.get_effect(d)(2.0) ≈ 0.2
         @test params(d) == params(base)
-        # Below the support survival is one; in-support evaluation is finite and
-        # coherent (survival in [0, 1], density non-negative, cdf = 1 - ccdf).
+        # Below the support survival is one; in-support evaluation matches the
+        # brute-force reference, and the identity pdf(x) = h*(x) S*(x) holds
+        # exactly by the definition of the hazard.
         @test logccdf(d, 0.0) == 0.0
-        @test isfinite(logpdf(d, 2.0))
-        @test 0.0 <= ccdf(d, 2.0) <= 1.0
+        ref = brute_logccdf(base, effect, g, ginv, 2.0)
+        @test logccdf(d, 2.0)≈ref atol=1e-4
         @test cdf(d, 2.0) ≈ 1 - ccdf(d, 2.0)
-        @test pdf(d, 2.0) >= 0.0
+        hstar2 = max(ginv(g(ref_hazard(base, 2.0)) + effect(2.0)), 0.0)
+        @test pdf(d, 2.0) ≈ hstar2 * ccdf(d, 2.0)
     end
 end
 
@@ -434,28 +465,61 @@ end
 
 @testitem "Modified effect surface: scalar vs callable vs vector" begin
     using Distributions
+    using QuadGK
 
     base = LogNormal(1.5, 0.5)
     disc = DiscreteNonParametric(collect(0:4), fill(0.2, 5))
 
-    # A constant callable would (once the numeric path lands) match the scalar
-    # effect; here we assert the type surface: each effect kind constructs on the
-    # right base under both closed-form links, and value support propagates.
-    @test modify(base, 0.5; link = log) isa UnivariateDistribution{Continuous}
-    @test modify(base, 0.5; link = identity) isa
-          UnivariateDistribution{Continuous}
-    @test modify(base, t -> 0.5; link = log) isa
-          UnivariateDistribution{Continuous}
-    @test modify(disc, fill(0.2, 5); link = log) isa
-          UnivariateDistribution{Discrete}
-    @test modify(disc, fill(0.2, 5); link = identity) isa
-          UnivariateDistribution{Discrete}
-
-    # The scalar closed-form paths are unchanged by the widening.
+    # Each effect kind constructs on the right base under both closed-form
+    # links, and evaluates to the value the modification implies, not merely
+    # the right type.
     dlog = modify(base, 0.5; link = log)
+    @test dlog isa UnivariateDistribution{Continuous}
     @test logccdf(dlog, 2.0) ≈ exp(0.5) * logccdf(base, 2.0)
+
     did = modify(base, 0.3; link = identity)
+    @test did isa UnivariateDistribution{Continuous}
     @test logccdf(did, 2.0) ≈ logccdf(base, 2.0) - 0.3 * 2.0
+
+    # A constant callable effect still takes the numeric quadrature path
+    # (#77b), but β(t) = 0.5 for all t is the same proportional-hazards model
+    # as the scalar effect 0.5, so the two must agree.
+    dcall = modify(base, t -> 0.5; link = log)
+    @test dcall isa UnivariateDistribution{Continuous}
+    @test logccdf(dcall, 2.0)≈logccdf(dlog, 2.0) atol=1e-6
+
+    # Discrete per-bin vector effects under both links reconstruct the exact
+    # PMF given by hazard -> link -> add -> invlink -> PMF, computed here with
+    # plain arithmetic rather than by calling into the package itself.
+    function ref_modified_pmf(pmf, effects, glink, ginv)
+        n = length(pmf)
+        surv = 1.0
+        h = zeros(n)
+        for d in 1:n
+            h[d] = surv > 0 ? pmf[d] / surv : 1.0
+            surv -= pmf[d]
+        end
+        h[n] = 1.0
+        hstar = [d == n ? 1.0 : ginv(glink(h[d]) + effects[d]) for d in 1:n]
+        p = zeros(n)
+        surv2 = 1.0
+        for d in 1:n
+            p[d] = surv2 * hstar[d]
+            surv2 -= p[d]
+        end
+        return p
+    end
+
+    effects = fill(0.2, 5)
+    base_pmf = [pdf(disc, Float64(b)) for b in 0:4]
+    for (link, glink, ginv) in (
+        (log, log, exp), (identity, identity, identity))
+        dd = modify(disc, effects; link = link)
+        @test dd isa UnivariateDistribution{Discrete}
+        ref = ref_modified_pmf(base_pmf, effects, glink, ginv)
+        got = [pdf(dd, Float64(b)) for b in 0:4]
+        @test got ≈ ref
+    end
 end
 
 @testitem "Modified ForwardDiff gradients (callable/vector and negative additive)" begin
@@ -464,22 +528,22 @@ end
 
     # Negative additive effect: the clamped closed form differentiates through
     # the effect β. The moving clamp knots carry no gradient (at a knot the
-    # integrand is zero), so the gradient matches a central finite difference.
+    # integrand is zero), so the AD gradient must match a central finite
+    # difference of the same closed form, for both logpdf and cdf. Evaluated
+    # at each base's own 90th-percentile point rather than a shared x: a fixed
+    # x can fall inside a clamped-to-zero band for some (base, beta) pairs,
+    # where the density is identically zero and its log is -Inf.
     fdcheck(f, x; h = 1e-6) = (f(x + h) - f(x - h)) / (2h)
     for b in (LogNormal(1.5, 0.5), Weibull(2.0, 3.0)), beta in (-0.1, -0.3, 0.2)
 
-        g_lp = ForwardDiff.derivative(
-            bb -> logpdf(modify(b, bb; link = identity), 3.0), beta)
-        g_cdf = ForwardDiff.derivative(
-            bb -> cdf(modify(b, bb; link = identity), 3.0), beta)
-        @test isfinite(g_lp)
-        @test isfinite(g_cdf)
+        x = quantile(b, 0.9)
+        lp(bb) = logpdf(modify(b, bb; link = identity), x)
+        cd(bb) = cdf(modify(b, bb; link = identity), x)
+        g_lp = ForwardDiff.derivative(lp, beta)
+        g_cdf = ForwardDiff.derivative(cd, beta)
+        @test g_lp≈fdcheck(lp, beta) atol=1e-6 rtol=1e-4
+        @test g_cdf≈fdcheck(cd, beta) atol=1e-6 rtol=1e-4
     end
-    g_ad = ForwardDiff.derivative(
-        bb -> cdf(modify(Weibull(2.0, 3.0), bb; link = identity), 3.0), -0.1)
-    g_fd = fdcheck(
-        bb -> cdf(modify(Weibull(2.0, 3.0), bb; link = identity), 3.0), -0.1)
-    @test g_ad≈g_fd atol=1e-3 rtol=1e-2
 
     # Per-bin vector effect on a discrete base: the whole PMF-hazard-PMF map is
     # AD-safe arithmetic, so the gradient wrt the effect vector is finite and
