@@ -58,6 +58,10 @@ export weight
 export series_transform, thin, cumulative
 # `modify`: a hazard modification through a link (proportional or additive).
 export modify
+# `piecewise_effect`: a piecewise-constant proportional-hazards multiplier,
+# closed-form under the log link; `gate` its finite-window special case,
+# producing a deliberately defective law (#105).
+export piecewise_effect, gate
 # The queryable sub-stochastic-law surface: the mass a `modify`d law holds,
 # and whether any is missing (#107).
 export total_mass, is_defective
