@@ -15,7 +15,11 @@
 #    `cumulative` / `series_transform`) carries an op meant for the count
 #    series a convolution layer produces. When such a wrapper is handed a
 #    numeric series, the ops are peeled off, the inner delay is convolved
-#    with the series, and the ops are applied to the resulting counts.
+#    with the series, and the ops are applied to the resulting counts. A
+#    `Vector` of such wrappers (ConvolvedDistributions 0.4's time-varying
+#    `convolve_series(delays, series)`, one delay per time point) composes
+#    through the same two methods with nothing extra — see the comment on
+#    `_convolve_delay_series` below.
 # 2. Quadrature window reconstruction. ConvolvedDistributions picks finite
 #    integration windows from a quantile of an AD-stripped (primal) copy of
 #    a component. Its generic rebuild goes through the type's positional
@@ -85,6 +89,24 @@ end
 # Discretise a continuous delay over the series window and convolve. `delay`
 # is a plain delay or a non-forward modifier wrapper, whose own CDF drives
 # the masses.
+#
+# ConvolvedDistributions 0.4 added a time-varying vector form,
+# `convolve_series(delays::AbstractVector, series)` (one delay per time
+# point, #79), plus the (now public) `delay_masses(delay, n)` hook it reads
+# per distinct element to get that delay's masses. Its default,
+# `delay_masses(d, n) = convolve_series(d, unit_impulse(n))`, bounces back
+# through a delay's own single-delay `convolve_series` — exactly the two
+# methods above — so a `Vector` of `Transformed`/
+# `AbstractModifiedDistribution` elements already composes correctly
+# (forward ops included) with no extra method here; verified directly
+# (including against ConvolvedDistributions' `===`-keyed masses cache for
+# repeated delays) in "Convolved extension: time-varying delay vector
+# preserves forward ops".
+# No `delay_masses` method is added here: the symbol does not exist before
+# CD 0.4 (absent from the 0.2/0.3 source), so importing it unconditionally
+# would break loading against this package's still-supported 0.2/0.3
+# compat range, for a method that would only replicate the default's
+# already-correct result.
 function _convolve_delay_series(
         delay, series::AbstractVector{<:Real}, interval)
     masses = _discretised_masses(delay, length(series) - 1, interval)
@@ -102,6 +124,15 @@ end
 # the bump. A caller who wants the primary event censored too builds
 # double-interval-censored masses (CensoredDistributions.jl) and convolves
 # them directly.
+#
+# NOT the same thing as ConvolvedDistributions 0.4's public `delay_masses`
+# hook (above), so it stays private and unreplaced: `delay_masses`'s
+# default has no continuous-discretisation logic of its own (a bare
+# continuous delay still `MethodError`s through it, CD#95) and its
+# signature (`delay_masses(d, n::Int)`) has no `interval` grid-width
+# argument, which this function's callers use (the `interval` kwarg
+# tested above). Discretising a continuous delay stays this package's job,
+# unchanged across the bump.
 function _discretised_masses(delay, maxlag::Integer, interval)
     maxlag >= 0 ||
         throw(ArgumentError("convolve_series needs a non-empty series"))
@@ -143,6 +174,16 @@ end
 # constructor over `params`, which flattens a wrapper's inner parameters
 # and so has no matching constructor here. Each wrapper reconstructs
 # itself instead.
+#
+# ConvolvedDistributions 0.4 added solver dispatch for analytic pairs and
+# the exact discrete lattice/divisor fold: a recognised closed-form pair
+# (e.g. two `Normal`s) skips quadrature — and this reconstruction —
+# entirely. That dispatch keys on concrete Distributions.jl types, not on
+# these wrapper types, so a component wrapped in `Affine`/`Modified`/etc.
+# still takes the numeric route and still needs the window this
+# reconstructs; confirmed directly with `ConvolvedDistributions.
+# evaluation_path` on the existing "modifiers as convolution components"
+# scenarios (`:numeric` both before and after the 0.4 bump).
 #
 # A forward op / likelihood weight never moves a quantile, so `Transformed`
 # and `Weighted` recurse straight to the inner distribution.
@@ -203,6 +244,15 @@ logcdf_ad_safe(d::Modified, x::Real) = _log1mexp(logccdf_ad_safe(d, x))
 # delegate vector observations in a single call rather than a scalar map.
 # The remaining cdf-family functions have no batched `Convolved` methods, so
 # they keep the default scalar-map path.
+#
+# ConvolvedDistributions 0.4 added `Ratio` (plus `pgf` and
+# `quantile_by_optimization`, neither of which is a distribution type).
+# Checked with `which(logpdf/pdf/cdf, Tuple{Ratio, Vector{Float64}})`
+# (also `Product`, `Difference`): all three resolve to Distributions.jl's
+# generic elementwise fallback, not a ConvolvedDistributions-owned batched
+# method — only `Convolved` has one. No declaration added for `Ratio`: a
+# false declaration here would route a whole vector into a batched method
+# that does not exist.
 _has_batched_method(::typeof(Distributions.logpdf), ::Convolved) = true
 _has_batched_method(::typeof(pdf), ::Convolved) = true
 _has_batched_method(::typeof(cdf), ::Convolved) = true

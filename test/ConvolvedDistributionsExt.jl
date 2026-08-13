@@ -85,6 +85,49 @@ end
         discretised_masses(delay, length(series) - 1; interval = 2), series)
 end
 
+@testitem "Convolved extension: time-varying delay vector preserves forward ops" setup=[DelayMasses] begin
+    using Distributions
+    using ConvolvedDistributions
+
+    # ConvolvedDistributions 0.4 added convolve_series(delays::AbstractVector,
+    # series): one delay per time point, dispatched element-by-element
+    # through the (now public) `delay_masses` hook (#79). Its default
+    # bounces back through a delay's own single-delay `convolve_series`,
+    # which is exactly the Transformed method above — so a Vector of
+    # forward-wrapped delays should compose correctly with no extra method
+    # needed here. `delay_masses` and this vector form of `convolve_series`
+    # do not exist before 0.4 (absent from the 0.2/0.3.1 source), so this
+    # only runs once ConvolvedDistributions 0.4 is actually resolved; it
+    # currently skips (see ModifiedDistributions#147: a co-dependency in
+    # this test env caps ConvolvedDistributions below 0.4 for now).
+    if pkgversion(ConvolvedDistributions) < v"0.4"
+        @test_skip false
+    else
+        series = [0.0, 5.0, 12.0, 20.0, 15.0, 8.0, 3.0]
+        n = length(series)
+
+        # The SAME base delay recurs with two different thin factors: this
+        # also exercises ConvolvedDistributions' `===`-keyed masses cache
+        # (built once per distinct delay, #79), so a stale cache slot
+        # cannot leak one time point's factor onto another's.
+        ps = [0.3, 0.5, 0.3, 0.5, 0.3, 0.5, 0.3]
+        wrapped = [thin(Gamma(2.0, 1.0), p) for p in ps]
+
+        result = convolve_series(wrapped, series)
+
+        baseline = discretised_masses(Gamma(2.0, 1.0), n - 1)
+        expected = convolve_series(
+            reduce(hcat, [p .* baseline for p in ps]), series)
+        @test result ≈ expected
+
+        # A dropped-ops bug would read the unthinned baseline at every
+        # time point instead; guard against silently matching that.
+        dropped = convolve_series(
+            reduce(hcat, [baseline for _ in ps]), series)
+        @test !isapprox(result, dropped)
+    end
+end
+
 @testitem "Convolved extension: modifiers as convolution components" begin
     using Distributions
     using ConvolvedDistributions
