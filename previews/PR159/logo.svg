@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 440">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 440" role="img" aria-label="ModifiedDistributions.jl logo">
+  <title>ModifiedDistributions.jl logo</title>
   <polygon points="200,30 364.5,125 364.5,315 200,410 35.5,315 35.5,125" fill="none" stroke="#64748b" stroke-width="2" stroke-linejoin="round" opacity="0.4"/>
   
   <!-- Original Base Distribution -->
